@@ -48,6 +48,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
+      if (user.assignedVehicleId) {
+        localStorage.setItem('assignedVehicleId', user.assignedVehicleId);
+      }
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       setUser(user);
@@ -111,6 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
+      if (user.assignedVehicleId) {
+        localStorage.setItem('assignedVehicleId', user.assignedVehicleId);
+      }
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       setUser(user);
@@ -125,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    localStorage.removeItem('assignedVehicleId');
     delete axios.defaults.headers.common['Authorization'];
   };
 

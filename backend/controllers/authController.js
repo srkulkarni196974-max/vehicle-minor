@@ -130,7 +130,25 @@ exports.login = async (req, res) => {
 
         const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-        res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+        let assignedVehicleId = null;
+        if (user.role === 'driver') {
+            const Vehicle = require('../models/Vehicle');
+            const vehicle = await Vehicle.findOne({ currentDriver: user._id });
+            if (vehicle) {
+                assignedVehicleId = vehicle._id;
+            }
+        }
+
+        res.json({
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                assignedVehicleId
+            }
+        });
     } catch (error) {
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
@@ -188,7 +206,25 @@ exports.verifyLoginOTP = async (req, res) => {
 
         const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-        res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+        let assignedVehicleId = null;
+        if (user.role === 'driver') {
+            const Vehicle = require('../models/Vehicle');
+            const vehicle = await Vehicle.findOne({ currentDriver: user._id });
+            if (vehicle) {
+                assignedVehicleId = vehicle._id;
+            }
+        }
+
+        res.json({
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                assignedVehicleId
+            }
+        });
     } catch (error) {
         console.error('Verify Login OTP error:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });

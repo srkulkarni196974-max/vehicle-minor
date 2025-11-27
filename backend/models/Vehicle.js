@@ -13,7 +13,22 @@ const vehicleSchema = new mongoose.Schema({
     insuranceExpiry: { type: Date },
     permitExpiry: { type: Date },
     documents: [{ type: String }], // URLs to uploaded docs
-    currentDriver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver' }
+    currentDriver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver' },
+    currentLocation: {
+        type: { type: String, default: 'Point' },
+        coordinates: { type: [Number], default: [0, 0] }, // [longitude, latitude]
+        timestamp: { type: Date },
+        speed: { type: Number }
+    },
+    locationHistory: [{
+        type: { type: String, default: 'Point' },
+        coordinates: { type: [Number] },
+        timestamp: { type: Date },
+        speed: { type: Number }
+    }]
 }, { timestamps: true });
+
+// Add geospatial index for location queries
+vehicleSchema.index({ currentLocation: '2dsphere' });
 
 module.exports = mongoose.model('Vehicle', vehicleSchema);

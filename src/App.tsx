@@ -9,6 +9,7 @@ import ExpenseManagement from './components/ExpenseManagement';
 import ServiceReminders from './components/ServiceReminders';
 import DriverManagement from './components/DriverManagement';
 import FleetManagement from './components/FleetManagement';
+import { MobileLocationTracker } from './components/MobileLocationTracker';
 
 
 
@@ -32,6 +33,12 @@ function AppContent(): JSX.Element {
   }
 
   const renderContent = (): JSX.Element => {
+    // Check for mobile tracker mode
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('mode') === 'tracker') {
+      return <MobileLocationTracker />;
+    }
+
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;

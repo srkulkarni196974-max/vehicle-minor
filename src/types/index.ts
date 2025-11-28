@@ -11,7 +11,7 @@ export interface Vehicle {
   id: string;
   owner_id: string;
   vehicle_number: string;
-  vehicle_type: 'car' | 'truck' | 'bus' | 'two_wheeler';
+  vehicle_type: string;
   make: string;
   model: string;
   year: number;

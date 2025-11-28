@@ -10,6 +10,8 @@ import ServiceReminders from './components/ServiceReminders';
 import DriverManagement from './components/DriverManagement';
 import FleetManagement from './components/FleetManagement';
 import { MobileLocationTracker } from './components/MobileLocationTracker';
+import DriverLocationService from './components/DriverLocationService';
+import LiveTracking from './components/LiveTracking';
 
 
 
@@ -54,6 +56,8 @@ function AppContent(): JSX.Element {
         return <ExpenseManagement />;
       case 'reminders':
         return <ServiceReminders />;
+      case 'tracking':
+        return <LiveTracking />;
       default:
         return <Dashboard />;
     }
@@ -62,6 +66,8 @@ function AppContent(): JSX.Element {
   return (
     <Layout activeTab={activeTab} onTabChange={setActiveTab}>
       {renderContent()}
+      {/* Automatic location tracking for drivers */}
+      {user.role === 'driver' && <DriverLocationService />}
     </Layout>
   );
 }

@@ -132,10 +132,14 @@ exports.login = async (req, res) => {
 
         let assignedVehicleId = null;
         if (user.role === 'driver') {
+            const Driver = require('../models/Driver');
             const Vehicle = require('../models/Vehicle');
-            const vehicle = await Vehicle.findOne({ currentDriver: user._id });
-            if (vehicle) {
-                assignedVehicleId = vehicle._id;
+            const driverProfile = await Driver.findOne({ userId: user._id });
+            if (driverProfile) {
+                const vehicle = await Vehicle.findOne({ currentDriver: driverProfile._id });
+                if (vehicle) {
+                    assignedVehicleId = vehicle._id;
+                }
             }
         }
 
@@ -208,10 +212,14 @@ exports.verifyLoginOTP = async (req, res) => {
 
         let assignedVehicleId = null;
         if (user.role === 'driver') {
+            const Driver = require('../models/Driver');
             const Vehicle = require('../models/Vehicle');
-            const vehicle = await Vehicle.findOne({ currentDriver: user._id });
-            if (vehicle) {
-                assignedVehicleId = vehicle._id;
+            const driverProfile = await Driver.findOne({ userId: user._id });
+            if (driverProfile) {
+                const vehicle = await Vehicle.findOne({ currentDriver: driverProfile._id });
+                if (vehicle) {
+                    assignedVehicleId = vehicle._id;
+                }
             }
         }
 
@@ -227,6 +235,50 @@ exports.verifyLoginOTP = async (req, res) => {
         });
     } catch (error) {
         console.error('Verify Login OTP error:', error);
+        res.status(500).json({ message: 'Server Error', error: error.message });
+    }
+};
+
+exports.getMe = async (req, res) => {
+    try {
+        console.log('👤 getMe called for user:', req.user.id);
+        const user = await User.findById(req.user.id).select('-password -otp -otpExpires');
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        let assignedVehicleId = null;
+        if (user.role === 'driver') {
+            const Driver = require('../models/Driver');
+            const Vehicle = require('../models/Vehicle');
+
+            // First find the Driver profile associated with this User
+            const driverProfile = await Driver.findOne({ userId: user._id });
+
+            if (driverProfile) {
+                console.log('🔍 Found driver profile:', driverProfile._id);
+                // Then find the vehicle assigned to this Driver
+                const vehicle = await Vehicle.findOne({ currentDriver: driverProfile._id });
+                if (vehicle) {
+                    console.log('✅ Found vehicle:', vehicle._id);
+                    assignedVehicleId = vehicle._id;
+                } else {
+                    console.log('⚠️ No vehicle found for driver profile:', driverProfile._id);
+                }
+            } else {
+                console.log('⚠️ No driver profile found for user:', user._id);
+            }
+        }
+
+        res.json({
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            assignedVehicleId
+        });
+    } catch (error) {
+        console.error('Get Me error:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };

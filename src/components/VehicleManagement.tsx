@@ -4,6 +4,8 @@ import { useVehicles } from '../hooks/useVehicles';
 import { Vehicle } from '../types';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
+import VehicleAutocomplete from './VehicleAutocomplete';
+import { vehicleTypes, vehicleMakes, vehicleModels } from '../data/vehicleData';
 
 export default function VehicleManagement() {
   const { user } = useAuth();
@@ -11,7 +13,7 @@ export default function VehicleManagement() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
     vehicle_number: '',
-    vehicle_type: 'car' as Vehicle['vehicle_type'],
+    vehicle_type: 'Car',
     make: '',
     model: '',
     year: new Date().getFullYear(),
@@ -22,8 +24,19 @@ export default function VehicleManagement() {
     permit_expiry: '',
   });
 
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+
+  // Update available models when make changes
+  React.useEffect(() => {
+    if (formData.make && vehicleModels[formData.make]) {
+      setAvailableModels(vehicleModels[formData.make]);
+    } else {
+      setAvailableModels([]);
+    }
+  }, [formData.make]);
+
   const getVehicleIcon = (type: Vehicle['vehicle_type']) => {
-    switch (type) {
+    switch (type.toLowerCase()) {
       case 'car': return Car;
       case 'truck': return Truck;
       case 'bus': return Bus;
@@ -54,7 +67,7 @@ export default function VehicleManagement() {
     setShowAddModal(false);
     setFormData({
       vehicle_number: '',
-      vehicle_type: 'car',
+      vehicle_type: 'Car',
       make: '',
       model: '',
       year: new Date().getFullYear(),
@@ -180,46 +193,35 @@ export default function VehicleManagement() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Vehicle Type
-                  </label>
-                  <select
+                  <VehicleAutocomplete
+                    label="Vehicle Type"
                     value={formData.vehicle_type}
-                    onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value as Vehicle['vehicle_type'] })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="car">Car</option>
-                    <option value="truck">Truck</option>
-                    <option value="bus">Bus</option>
-                    <option value="two_wheeler">Two Wheeler</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Make
-                  </label>
-                  <input
-                    type="text"
+                    onChange={(value) => setFormData({ ...formData, vehicle_type: value })}
+                    options={vehicleTypes}
+                    placeholder="Select Type"
                     required
-                    value={formData.make}
-                    onChange={(e) => setFormData({ ...formData, make: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g., Honda, Tata"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Model
-                  </label>
-                  <input
-                    type="text"
+                  <VehicleAutocomplete
+                    label="Make"
+                    value={formData.make}
+                    onChange={(value) => setFormData({ ...formData, make: value, model: '' })} // Reset model on make change
+                    options={vehicleMakes}
+                    placeholder="Select Make"
                     required
+                  />
+                </div>
+
+                <div>
+                  <VehicleAutocomplete
+                    label="Model"
                     value={formData.model}
-                    onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g., City, LPT 407"
+                    onChange={(value) => setFormData({ ...formData, model: value })}
+                    options={availableModels}
+                    placeholder={availableModels.length > 0 ? "Select Model" : "Type Model"}
+                    required
                   />
                 </div>
 

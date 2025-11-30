@@ -7,10 +7,15 @@ const { Server } = require('socket.io');
 
 const app = express();
 
-// Middleware - Allow all origins for development to fix mobile connection issues
+// Middleware - CORS configuration for production
 app.use(express.json());
 app.use(cors({
-    origin: true, // Allow any origin
+    origin: [
+        'http://localhost:5173',
+        'http://localhost:5000',
+        'https://vehicle-management-tracker.netlify.app',
+        'https://*.netlify.app'
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -41,7 +46,11 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*", // Allow all origins for Socket.io
+        origin: [
+            'http://localhost:5173',
+            'https://vehicle-management-tracker.netlify.app',
+            'https://*.netlify.app'
+        ],
         methods: ["GET", "POST"],
         credentials: true
     }

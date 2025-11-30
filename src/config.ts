@@ -1,6 +1,9 @@
 // API Configuration
 // Automatically uses environment variable in production, localhost in development
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+export const API_URL = import.meta.env.VITE_API_URL ||
+    (import.meta.env.PROD
+        ? 'https://vehicle-management-backend-ap3f.onrender.com'
+        : 'http://localhost:5000');
 
 // WebSocket URL (same as API URL)
 export const WS_URL = API_URL;

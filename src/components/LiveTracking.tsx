@@ -12,7 +12,12 @@ interface Vehicle {
     type: string;
     currentDriver?: {
         _id: string;
-        name: string;
+        licenseNumber: string;
+        userId: {
+            _id: string;
+            name: string;
+            email?: string;
+        };
     };
     currentLocation?: {
         coordinates: [number, number];
@@ -210,7 +215,7 @@ function VehicleCard({ vehicle, isActive, onClick, lastUpdate }: VehicleCardProp
                 <div className="flex items-center gap-2 text-sm text-gray-700">
                     <MapPin className="h-4 w-4" />
                     <span className="font-medium">Driver:</span>
-                    <span>{vehicle.currentDriver?.name || 'Unassigned'}</span>
+                    <span>{vehicle.currentDriver?.userId?.name || 'Unassigned'}</span>
                 </div>
 
                 {vehicle.currentLocation && (

@@ -7,15 +7,31 @@ const { Server } = require('socket.io');
 
 const app = express();
 
-// Middleware - CORS configuration for production
+// Middleware - CORS configuration for production and mobile access
 app.use(express.json());
+
+// Dynamic CORS to allow local network access for mobile devices
 app.use(cors({
-    origin: [
-        'http://localhost:5173',
-        'http://localhost:5000',
-        'https://vehicle-management-tracker.netlify.app',
-        'https://*.netlify.app'
-    ],
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or Postman)
+        if (!origin) return callback(null, true);
+
+        const allowedOrigins = [
+            'http://localhost:5173',
+            'http://localhost:5000',
+            'https://vehicle-management-tracker.netlify.app',
+        ];
+
+        // Allow any localhost or local network IP (10.x.x.x, 192.168.x.x, 172.16-31.x.x)
+        const isLocalNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(origin);
+        const isNetlify = origin.endsWith('.netlify.app');
+
+        if (allowedOrigins.includes(origin) || isLocalNetwork || isNetlify) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -46,11 +62,20 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: [
-            'http://localhost:5173',
-            'https://vehicle-management-tracker.netlify.app',
-            'https://*.netlify.app'
-        ],
+        origin: function (origin, callback) {
+            // Allow requests with no origin
+            if (!origin) return callback(null, true);
+
+            // Allow localhost and local network IPs
+            const isLocalNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(origin);
+            const isNetlify = origin.endsWith('.netlify.app');
+
+            if (isLocalNetwork || isNetlify) {
+                callback(null, true);
+            } else {
+                callback(null, false);
+            }
+        },
         methods: ["GET", "POST"],
         credentials: true
     }

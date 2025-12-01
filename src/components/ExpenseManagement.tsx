@@ -5,6 +5,7 @@ import { Expense } from '../types';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 export default function ExpenseManagement() {
   const { user } = useAuth();
@@ -137,10 +138,10 @@ export default function ExpenseManagement() {
           <div className="mt-4 pt-4 border-t border-gray-100">
             <p className="text-sm text-gray-600 mb-2">Receipt:</p>
             <img
-              src={`http://localhost:5000${expense.receipt_url}`}
+              src={`${API_URL}${expense.receipt_url}`}
               alt="Receipt"
               className="max-w-xs rounded-lg border border-gray-200 cursor-pointer hover:opacity-90"
-              onClick={() => window.open(`http://localhost:5000${expense.receipt_url}`, '_blank')}
+              onClick={() => window.open(`${API_URL}${expense.receipt_url}`, '_blank')}
             />
           </div>
         )}

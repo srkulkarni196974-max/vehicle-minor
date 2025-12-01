@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, User, UserCheck, UserX, Car } from 'lucide-react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { API_URL } from '../config';
 
 interface Driver {
     _id: string;
@@ -45,8 +46,6 @@ export default function DriverManagement() {
         status: 'Available' as 'Available' | 'On Trip' | 'Inactive',
     });
 
-    const API_URL = 'http://localhost:5000/api';
-
     useEffect(() => {
         fetchDrivers();
         fetchVehicles();
@@ -55,7 +54,7 @@ export default function DriverManagement() {
     const fetchDrivers = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get(`${API_URL}/drivers`, {
+            const response = await axios.get(`${API_URL}/api/drivers`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setDrivers(response.data);
@@ -69,7 +68,7 @@ export default function DriverManagement() {
     const fetchVehicles = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get(`${API_URL}/vehicles`, {
+            const response = await axios.get(`${API_URL}/api/vehicles`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setVehicles(response.data);
@@ -86,7 +85,7 @@ export default function DriverManagement() {
             if (editingDriver) {
                 // Update existing driver
                 await axios.put(
-                    `${API_URL}/drivers/${editingDriver._id}`,
+                    `${API_URL}/api/drivers/${editingDriver._id}`,
                     {
                         licenseNumber: formData.licenseNumber,
                         assignedVehicle: formData.assignedVehicle || null,
@@ -97,7 +96,7 @@ export default function DriverManagement() {
             } else {
                 // Create new driver
                 await axios.post(
-                    `${API_URL}/drivers`,
+                    `${API_URL}/api/drivers`,
                     formData,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
@@ -117,7 +116,7 @@ export default function DriverManagement() {
 
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`${API_URL}/drivers/${id}`, {
+            await axios.delete(`${API_URL}/api/drivers/${id}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             fetchDrivers();

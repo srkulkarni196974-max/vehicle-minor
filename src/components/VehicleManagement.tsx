@@ -54,29 +54,37 @@ export default function VehicleManagement() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitError, setSubmitError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    setSubmitError("");
 
-    addVehicle({
-      ...formData,
-      owner_id: user.id,
-      status: 'active',
-    });
+    try {
+      await addVehicle({
+        ...formData,
+        owner_id: user.id,
+        status: 'active',
+      });
 
-    setShowAddModal(false);
-    setFormData({
-      vehicle_number: '',
-      vehicle_type: 'Car',
-      make: '',
-      model: '',
-      year: new Date().getFullYear(),
-      fuel_type: 'petrol',
-      current_mileage: 0,
-      insurance_expiry: '',
-      service_due_date: '',
-      permit_expiry: '',
-    });
+      setShowAddModal(false);
+      setFormData({
+        vehicle_number: '',
+        vehicle_type: 'Car',
+        make: '',
+        model: '',
+        year: new Date().getFullYear(),
+        fuel_type: 'petrol',
+        current_mileage: 0,
+        insurance_expiry: '',
+        service_due_date: '',
+        permit_expiry: '',
+      });
+    } catch (error: any) {
+      console.error("Failed to add vehicle:", error);
+      setSubmitError(error.response?.data?.message || "Failed to add vehicle. Please try again.");
+    }
   };
 
   const VehicleCard = ({ vehicle }: { vehicle: Vehicle }) => {
@@ -177,6 +185,11 @@ export default function VehicleManagement() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {submitError && (
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+                  {submitError}
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

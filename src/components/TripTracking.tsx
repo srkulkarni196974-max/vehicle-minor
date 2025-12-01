@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MapPin, Calendar, Car, Navigation, Edit } from 'lucide-react';
+import { Plus, MapPin, Calendar, Car, Navigation, Edit, Map } from 'lucide-react';
 import { useVehicles } from '../hooks/useVehicles';
 import { Trip } from '../types';
 import { format, parseISO } from 'date-fns';
@@ -33,6 +33,7 @@ export default function TripTracking() {
   });
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
+  const [viewingTripMap, setViewingTripMap] = useState<Trip | null>(null);
   const [filterDate, setFilterDate] = useState('');
   const [filterDriver, setFilterDriver] = useState('');
   const [filterVehicle, setFilterVehicle] = useState('');
@@ -156,6 +157,16 @@ export default function TripTracking() {
             <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
               {distance} km
             </span>
+
+            {/* View Map Button */}
+            <button
+              onClick={() => setViewingTripMap(trip)}
+              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+              title="View on Map"
+            >
+              <Map className="h-5 w-5" />
+            </button>
+
             <button
               onClick={() => {
                 setEditingTrip(trip);
@@ -717,6 +728,61 @@ export default function TripTracking() {
         </div>
       )}
 
+      {/* View Trip Map Modal */}
+      {viewingTripMap && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-purple-500 to-indigo-600">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Map className="h-6 w-6 text-white" />
+                  <h2 className="text-xl font-semibold text-white">
+                    Trip: {viewingTripMap.start_location} → {viewingTripMap.end_location}
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setViewingTripMap(null)}
+                  className="text-white hover:text-gray-200 transition"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {viewingTripMap.start_location_lat && viewingTripMap.start_location_lon && viewingTripMap.end_location_lat && viewingTripMap.end_location_lon ? (
+                <VehicleTracker
+                  vehicleId={viewingTripMap.vehicle_id}
+                  vehicleName={vehicles.find(v => v.id === viewingTripMap.vehicle_id)?.vehicle_number || 'Vehicle'}
+                  tripPoints={{
+                    start: {
+                      lat: parseFloat(viewingTripMap.start_location_lat),
+                      lng: parseFloat(viewingTripMap.start_location_lon),
+                      label: viewingTripMap.start_location
+                    },
+                    end: {
+                      lat: parseFloat(viewingTripMap.end_location_lat),
+                      lng: parseFloat(viewingTripMap.end_location_lon),
+                      label: viewingTripMap.end_location
+                    }
+                  }}
+                />
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-600">Map data not available for this trip.</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Location coordinates are missing. Please edit the trip and select locations from the dropdown.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Track Vehicle Modal */}
       {showTrackModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -799,34 +865,11 @@ export default function TripTracking() {
               ) : (
                 <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg p-12 border-2 border-dashed border-purple-300">
                   <div className="text-center">
-                    <Navigation className="h-20 w-20 text-purple-500 mx-auto mb-4 animate-pulse" />
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                      Select a Vehicle to Start Tracking
-                    </h3>
-                    <p className="text-gray-600 mb-6">
-                      Choose a vehicle from the dropdown above to view its live location
+                    <Navigation className="h-16 w-16 text-purple-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-purple-900">Ready to Track</h3>
+                    <p className="text-purple-600 mt-2">
+                      Select a vehicle above to see its real-time location and speed.
                     </p>
-
-                    {/* Features */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                      <div className="bg-white p-4 rounded-lg shadow-sm">
-                        <MapPin className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                        <p className="font-semibold text-gray-900">Real-time Location</p>
-                        <p className="text-sm text-gray-600 mt-1">Live GPS coordinates</p>
-                      </div>
-
-                      <div className="bg-white p-4 rounded-lg shadow-sm">
-                        <Car className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                        <p className="font-semibold text-gray-900">Speed Monitoring</p>
-                        <p className="text-sm text-gray-600 mt-1">Current vehicle speed</p>
-                      </div>
-
-                      <div className="bg-white p-4 rounded-lg shadow-sm">
-                        <Navigation className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                        <p className="font-semibold text-gray-900">Route History</p>
-                        <p className="text-sm text-gray-600 mt-1">Movement trail on map</p>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}

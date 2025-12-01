@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Navigation, MapPin, Gauge, Clock, Radio } from 'lucide-react';
+import { Navigation, MapPin, Gauge, Clock, Radio, PlayCircle } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -22,21 +22,34 @@ interface VehicleLocation {
     timestamp: Date;
 }
 
-// Component to auto-center map on vehicle
-function MapController({ center }: { center: [number, number] }) {
+interface TripPoints {
+    start: { lat: number; lng: number; label: string };
+    end: { lat: number; lng: number; label: string };
+}
+
+// Component to auto-center map
+function MapController({ center, bounds }: { center: [number, number], bounds?: L.LatLngBoundsExpression }) {
     const map = useMap();
+
     useEffect(() => {
-        map.setView(center, 15);
-    }, [center, map]);
+        if (bounds) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+        } else {
+            map.setView(center, 15);
+        }
+    }, [center, bounds, map]);
+
     return null;
 }
 
 interface VehicleTrackerProps {
     vehicleId: string;
     vehicleName: string;
+    tripPoints?: TripPoints;
+    onSaveTrip?: (data: any) => void;
 }
 
-export default function VehicleTracker({ vehicleId, vehicleName }: VehicleTrackerProps) {
+export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onSaveTrip }: VehicleTrackerProps) {
     const [currentLocation, setCurrentLocation] = useState<VehicleLocation>({
         lat: 18.5204, // Default: Pune, India
         lng: 73.8567,
@@ -49,8 +62,8 @@ export default function VehicleTracker({ vehicleId, vehicleName }: VehicleTracke
 
     // Initialize Socket.io
     useEffect(() => {
-        // Dynamically connect to the backend on the same IP as the frontend
-        const socketUrl = `http://${window.location.hostname}:5000`;
+        // Connect to the backend using centralized config
+        const socketUrl = API_URL;
         console.log('Connecting to socket at:', socketUrl);
 
         socketRef.current = io(socketUrl);
@@ -152,7 +165,7 @@ export default function VehicleTracker({ vehicleId, vehicleName }: VehicleTracke
         }
     }, [currentLocation]);
 
-    const customIcon = new L.Icon({
+    const vehicleIcon = new L.Icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
         iconSize: [25, 41],
@@ -160,6 +173,59 @@ export default function VehicleTracker({ vehicleId, vehicleName }: VehicleTracke
         popupAnchor: [1, -34],
         shadowSize: [41, 41],
     });
+
+    const startIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+    });
+
+    const endIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+    });
+
+    // Calculate bounds if trip points are present
+    const getBounds = (): L.LatLngBoundsExpression | undefined => {
+        if (!tripPoints) return undefined;
+
+        const points: [number, number][] = [
+            [tripPoints.start.lat, tripPoints.start.lng],
+            [tripPoints.end.lat, tripPoints.end.lng],
+            [currentLocation.lat, currentLocation.lng]
+        ];
+
+        return points;
+    };
+
+    const handleSaveTrip = () => {
+        if (!onSaveTrip) return;
+
+        // Calculate total distance from locationHistory
+        let totalDistance = 0;
+        for (let i = 0; i < locationHistory.length - 1; i++) {
+            const p1 = L.latLng(locationHistory[i][0], locationHistory[i][1]);
+            const p2 = L.latLng(locationHistory[i + 1][0], locationHistory[i + 1][1]);
+            totalDistance += p1.distanceTo(p2);
+        }
+
+        // Convert meters to km
+        const distanceKm = totalDistance / 1000;
+
+        onSaveTrip({
+            startLocation: 'Current Location',
+            endLocation: 'Current Location',
+            startTime: new Date(),
+            distance: distanceKm
+        });
+    };
 
     return (
         <div className="space-y-4">
@@ -176,6 +242,15 @@ export default function VehicleTracker({ vehicleId, vehicleName }: VehicleTracke
                         </p>
                     </div>
                 </div>
+                {onSaveTrip && (
+                    <button
+                        onClick={handleSaveTrip}
+                        className="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm font-medium shadow-sm"
+                    >
+                        <PlayCircle className="h-4 w-4" />
+                        <span>Log as Trip</span>
+                    </button>
+                )}
             </div>
 
             {/* Vehicle Stats */}
@@ -248,10 +323,37 @@ export default function VehicleTracker({ vehicleId, vehicleName }: VehicleTracke
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
 
-                        <MapController center={[currentLocation.lat, currentLocation.lng]} />
+                        <MapController
+                            center={[currentLocation.lat, currentLocation.lng]}
+                            bounds={getBounds()}
+                        />
+
+                        {/* Start Point Marker */}
+                        {tripPoints && (
+                            <Marker position={[tripPoints.start.lat, tripPoints.start.lng]} icon={startIcon}>
+                                <Popup>
+                                    <div className="text-center">
+                                        <p className="font-semibold text-green-600">Start Point</p>
+                                        <p className="text-sm text-gray-600">{tripPoints.start.label}</p>
+                                    </div>
+                                </Popup>
+                            </Marker>
+                        )}
+
+                        {/* End Point Marker */}
+                        {tripPoints && (
+                            <Marker position={[tripPoints.end.lat, tripPoints.end.lng]} icon={endIcon}>
+                                <Popup>
+                                    <div className="text-center">
+                                        <p className="font-semibold text-blue-600">Destination</p>
+                                        <p className="text-sm text-gray-600">{tripPoints.end.label}</p>
+                                    </div>
+                                </Popup>
+                            </Marker>
+                        )}
 
                         {/* Vehicle Marker */}
-                        <Marker position={[currentLocation.lat, currentLocation.lng]} icon={customIcon}>
+                        <Marker position={[currentLocation.lat, currentLocation.lng]} icon={vehicleIcon}>
                             <Popup>
                                 <div className="text-center">
                                     <p className="font-semibold">{vehicleName}</p>
@@ -270,6 +372,20 @@ export default function VehicleTracker({ vehicleId, vehicleName }: VehicleTracke
                                 color="#7c3aed"
                                 weight={3}
                                 opacity={0.7}
+                            />
+                        )}
+
+                        {/* Trip Route Line (Straight line for reference) */}
+                        {tripPoints && (
+                            <Polyline
+                                positions={[
+                                    [tripPoints.start.lat, tripPoints.start.lng],
+                                    [tripPoints.end.lat, tripPoints.end.lng]
+                                ]}
+                                color="#3b82f6"
+                                weight={2}
+                                dashArray="10, 10"
+                                opacity={0.5}
                             />
                         )}
                     </MapContainer>

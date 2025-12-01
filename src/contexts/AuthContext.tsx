@@ -1,11 +1,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../types';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 // Configure axios defaults
-// Configure axios defaults
-// Use dynamic hostname to allow mobile connection
-axios.defaults.baseURL = `http://${window.location.hostname}:5000/api`;
+// Use centralized API URL from config
+axios.defaults.baseURL = `${API_URL}/api`;
 axios.defaults.withCredentials = true;
 
 interface AuthContextType {

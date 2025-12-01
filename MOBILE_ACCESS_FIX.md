@@ -62,7 +62,7 @@ app.use(cors({
             'https://vehicle-management-tracker.netlify.app',
         ];
         
-        // Allow any localhost or local network IP (10.x.x.x, 192.168.x.x, 172.16-31.x.x)
+        // Allow any localhost or local network IP (10.x.x.x, 168.x.x, 172.16-31.x.x)
         const isLocalNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(origin);
         const isNetlify = origin.endsWith('.netlify.app');
         
@@ -81,7 +81,7 @@ app.use(cors({
 **What this allows:**
 - ✅ `http://localhost:5173` (desktop browser)
 - ✅ `http://10.29.71.165:5173` (mobile on same network)
-- ✅ `http://192.168.x.x:5173` (other local network IPs)
+- ✅ `http://168.x.x:5173` (other local network IPs)
 - ✅ `https://*.netlify.app` (production deployment)
 
 ### 3. Socket.io CORS Configuration
@@ -178,7 +178,7 @@ The frontend will display something like:
 The solution automatically supports these private network IP ranges:
 - **10.0.0.0 - 10.255.255.255** (Class A private)
 - **172.16.0.0 - 172.31.255.255** (Class B private)
-- **192.168.0.0 - 192.168.255.255** (Class C private)
+- **168.0.0 - 168.255.255** (Class C private)
 - **localhost / 127.0.0.1** (Loopback)
 
 ## Production Deployment

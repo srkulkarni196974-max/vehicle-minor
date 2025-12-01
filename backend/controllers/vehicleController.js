@@ -3,11 +3,15 @@ const Vehicle = require('../models/Vehicle');
 // Add a new vehicle
 exports.addVehicle = async (req, res) => {
     try {
+        console.log('Add Vehicle Request:', req.body);
+        console.log('User:', req.user);
+
         const { registrationNumber, make, model, year, type, fuelType, currentMileage, serviceDate, insuranceExpiry, permitExpiry } = req.body;
 
         // Check if vehicle already exists
         const existingVehicle = await Vehicle.findOne({ registrationNumber });
         if (existingVehicle) {
+            console.log('Vehicle already exists:', registrationNumber);
             return res.status(400).json({ message: 'Vehicle with this registration number already exists' });
         }
 
@@ -26,8 +30,10 @@ exports.addVehicle = async (req, res) => {
         });
 
         await vehicle.save();
+        console.log('Vehicle added successfully:', vehicle._id);
         res.status(201).json({ message: 'Vehicle added successfully', vehicle });
     } catch (error) {
+        console.error('Error adding vehicle:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };

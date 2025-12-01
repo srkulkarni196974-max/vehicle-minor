@@ -5,11 +5,11 @@ const auth = require('../middleware/authMiddleware');
 
 // All routes require authentication
 // Only Admin and Owner can manage vehicles
-router.post('/', auth(['admin', 'fleet_owner']), addVehicle);
-router.get('/', auth(['admin', 'fleet_owner', 'driver']), getVehicles); // Drivers might need to see vehicles too?
-router.get('/:id', auth(['admin', 'fleet_owner', 'driver']), getVehicleById);
-router.put('/:id', auth(['admin', 'fleet_owner']), updateVehicle);
-router.delete('/:id', auth(['admin', 'fleet_owner']), deleteVehicle);
+router.post('/', auth(['admin', 'fleet_owner', 'personal']), addVehicle);
+router.get('/', auth(['admin', 'fleet_owner', 'driver', 'personal']), getVehicles); // Drivers might need to see vehicles too?
+router.get('/:id', auth(['admin', 'fleet_owner', 'driver', 'personal']), getVehicleById);
+router.put('/:id', auth(['admin', 'fleet_owner', 'personal']), updateVehicle);
+router.delete('/:id', auth(['admin', 'fleet_owner', 'personal']), deleteVehicle);
 
 // Location tracking route - drivers can update their vehicle's location
 router.post('/:id/location', auth(['driver', 'admin', 'fleet_owner']), async (req, res) => {

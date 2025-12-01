@@ -20,13 +20,16 @@ app.use(cors({
             'http://localhost:5173',
             'http://localhost:5000',
             'https://vehicle-management-tracker.netlify.app',
+            'https://vehicle-management-backend-ap3f.onrender.com'
         ];
 
         // Allow any localhost or local network IP (10.x.x.x, 192.168.x.x, 172.16-31.x.x)
         const isLocalNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(origin);
         const isNetlify = origin.endsWith('.netlify.app');
+        const isRender = origin.includes('onrender.com');
 
-        if (allowedOrigins.includes(origin) || isLocalNetwork || isNetlify) {
+
+        if (allowedOrigins.includes(origin) || isLocalNetwork || isNetlify || isRender) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
@@ -69,8 +72,10 @@ const io = new Server(server, {
             // Allow localhost and local network IPs
             const isLocalNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(origin);
             const isNetlify = origin.endsWith('.netlify.app');
+            const isRender = origin.includes('onrender.com');
 
-            if (isLocalNetwork || isNetlify) {
+
+            if (isLocalNetwork || isNetlify || isRender) {
                 callback(null, true);
             } else {
                 callback(null, false);

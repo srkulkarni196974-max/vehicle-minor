@@ -1,36 +1,32 @@
 require('dotenv').config();
-const nodemailer = require('nodemailer');
-
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // use SSL
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+const { Resend } = require('resend');
 
 const sendTestEmail = async () => {
-    console.log('Attempting to send email...');
-    console.log(`User: ${process.env.EMAIL_USER}`);
-    // Masking password for security in logs, but printing length to ensure it's read
-    console.log(`Pass length: ${process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0}`);
+    console.log('Attempting to send email via Resend...');
 
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: process.env.EMAIL_USER, // Send to self
-        subject: 'Test Email from Vehicle System',
-        text: 'If you see this, email sending is working!'
-    };
+    if (!process.env.RESEND_API_KEY) {
+        console.error('❌ RESEND_API_KEY is missing in .env file');
+        return;
+    }
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     try {
-        const info = await transporter.sendMail(mailOptions);
-        console.log('Email sent successfully!');
-        console.log('Message ID:', info.messageId);
+        const { data, error } = await resend.emails.send({
+            from: 'VehicleTracker <onboarding@resend.dev>',
+            to: ['delivered@resend.dev'], // Test address
+            subject: 'Test Email from Vehicle System',
+            html: '<p>If you see this, <strong>Resend API</strong> is working!</p>'
+        });
+
+        if (error) {
+            console.error('❌ Error sending email:', error);
+        } else {
+            console.log('✅ Email sent successfully!');
+            console.log('Message ID:', data.id);
+        }
     } catch (error) {
-        console.error('Error sending email:');
-        console.error(error);
+        console.error('❌ Unexpected error:', error);
     }
 };
 

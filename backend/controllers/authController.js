@@ -1,135 +1,54 @@
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { sendOTP } = require('../services/emailService');
+const admin = require('../config/firebase');
 
-const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
-
-exports.register = async (req, res) => {
+// Sync User with Firebase (Login/Register)
+exports.syncUser = async (req, res) => {
     try {
-        console.log('Register request received:', req.body);
-        const { name, email, password, role } = req.body;
+        const { name, email, role, firebaseUid } = req.body;
 
-        if (!name || !email || !password || !role) {
-            return res.status(400).json({ message: 'All fields are required' });
-        }
+        // The token is already verified by middleware if this route is protected,
+        // but for initial sync we might want to verify explicitly or rely on middleware.
+        // Let's assume this endpoint is protected by authMiddleware, so req.user is populated from the token.
+        // However, for the *first* creation, the user might not exist in MongoDB yet, 
+        // which would cause the middleware to fail if it strictly checks for MongoDB user.
+        // So this endpoint should probably be OPEN or have a special middleware that only verifies the token validity.
 
-        // Ensure role is valid
-        const validRoles = ['admin', 'fleet_owner', 'driver', 'personal'];
-        if (!validRoles.includes(role)) {
-            return res.status(400).json({ message: 'Invalid role' });
+        // Actually, let's make this endpoint verify the token manually to avoid the middleware "User not found" catch-22.
+        const token = req.header('Authorization')?.replace('Bearer ', '');
+        if (!token) return res.status(401).json({ message: 'No token provided' });
+
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        const requestEmail = decodedToken.email;
+
+        if (email !== requestEmail) {
+            return res.status(403).json({ message: 'Token email does not match request body' });
         }
 
         let user = await User.findOne({ email });
+
         if (user) {
-            console.log('User already exists:', email);
-            return res.status(400).json({ message: 'User already exists' });
+            // Update existing user if needed
+            // user.name = name || user.name; // Optional update
+            // await user.save();
+            console.log('✅ User logged in:', email);
+        } else {
+            // Create new user
+            if (!role) {
+                return res.status(400).json({ message: 'Role is required for new registration' });
+            }
+
+            user = new User({
+                name: name || decodedToken.name || 'User',
+                email,
+                role,
+                isVerified: true, // Firebase handles verification
+                isActive: true
+            });
+            await user.save();
+            console.log('🎉 New user registered:', email);
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const otp = generateOTP();
-        console.log('Generated OTP:', otp);
-        const otpExpires = Date.now() + 10 * 60 * 1000; // 10 mins
-
-        user = new User({
-            name,
-            email,
-            password: hashedPassword,
-            role,
-            otp,
-            otpExpires
-        });
-
-        await user.save();
-        console.log('User saved, sending OTP...');
-
-        const emailSent = await sendOTP(email, otp, name);
-        console.log('OTP Email sent result:', emailSent);
-
-        if (!emailSent) {
-            // If email fails, delete the user so they can try again
-            await User.deleteOne({ _id: user._id });
-            return res.status(500).json({ message: 'Failed to send OTP email' });
-        }
-
-        res.status(201).json({ message: 'User registered. Please verify OTP sent to email.' });
-    } catch (error) {
-        console.error('Registration error details:', error);
-        if (error.name === 'ValidationError') {
-            const messages = Object.values(error.errors).map(val => val.message);
-            return res.status(400).json({ message: messages.join(', ') });
-        }
-        res.status(500).json({ message: 'Server Error', error: error.message });
-    }
-};
-
-exports.verifyOTP = async (req, res) => {
-    try {
-        const { email, otp } = req.body;
-        const user = await User.findOne({ email });
-
-        if (!user) return res.status(400).json({ message: 'User not found' });
-        if (user.isVerified) return res.status(400).json({ message: 'User already verified' });
-
-        if (user.otp !== otp || user.otpExpires < Date.now()) {
-            return res.status(400).json({ message: 'Invalid or expired OTP' });
-        }
-
-        user.isVerified = true;
-        user.otp = undefined;
-        user.otpExpires = undefined;
-        await user.save();
-
-        res.json({ message: 'Email verified successfully. You can now login.' });
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error', error: error.message });
-    }
-};
-
-exports.resendOTP = async (req, res) => {
-    try {
-        const { email } = req.body;
-        const user = await User.findOne({ email });
-
-        if (!user) return res.status(400).json({ message: 'User not found' });
-        if (user.isVerified) return res.status(400).json({ message: 'User already verified' });
-
-        const otp = generateOTP();
-        const otpExpires = Date.now() + 10 * 60 * 1000; // 10 mins
-
-        user.otp = otp;
-        user.otpExpires = otpExpires;
-        await user.save();
-
-        console.log('Resending OTP to:', email);
-        const emailSent = await sendOTP(email, otp, user.name);
-        console.log('Resend OTP result:', emailSent);
-
-        if (!emailSent) {
-            return res.status(500).json({ message: 'Failed to send OTP email' });
-        }
-
-        res.json({ message: 'OTP resent successfully' });
-    } catch (error) {
-        console.error('Resend OTP error:', error);
-        res.status(500).json({ message: 'Server Error', error: error.message });
-    }
-};
-
-exports.login = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const user = await User.findOne({ email });
-
-        if (!user) return res.status(400).json({ message: 'Invalid credentials' });
-        if (!user.isVerified) return res.status(400).json({ message: 'Please verify your email first' });
-        if (!user.isActive) return res.status(403).json({ message: 'Account is inactive' });
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
-
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
+        // Check for driver assignment
         let assignedVehicleId = null;
         if (user.role === 'driver') {
             const Driver = require('../models/Driver');
@@ -144,7 +63,6 @@ exports.login = async (req, res) => {
         }
 
         res.json({
-            token,
             user: {
                 id: user._id,
                 name: user.name,
@@ -153,118 +71,17 @@ exports.login = async (req, res) => {
                 assignedVehicleId
             }
         });
+
     } catch (error) {
-        res.status(500).json({ message: 'Server Error', error: error.message });
-    }
-};
-
-exports.sendLoginOTP = async (req, res) => {
-    try {
-        console.log('🎯 sendLoginOTP endpoint called');
-        console.log('🎯 Request body:', req.body);
-
-        const { email } = req.body;
-        console.log('🎯 Looking for user with email:', email);
-
-        const user = await User.findOne({ email });
-        console.log('🎯 User lookup complete. Found:', !!user);
-
-        if (!user) {
-            console.log('❌ User not found');
-            return res.status(400).json({ message: 'User not found' });
-        }
-
-        console.log('🎯 User details - isActive:', user.isActive, 'isVerified:', user.isVerified);
-
-        // Allow unverified users to receive OTP to verify their account
-        // if (!user.isVerified) return res.status(400).json({ message: 'Please verify your email first' });
-        if (!user.isActive) {
-            console.log('❌ User is inactive');
-            return res.status(403).json({ message: 'Account is inactive' });
-        }
-
-        const otp = generateOTP();
-        const otpExpires = Date.now() + 10 * 60 * 1000; // 10 mins
-
-        console.log('🎯 Generated OTP:', otp);
-
-        user.otp = otp;
-        user.otpExpires = otpExpires;
-        console.log('🎯 Saving user with OTP...');
-        await user.save();
-        console.log('✅ User saved successfully');
-
-        console.log('📧 Calling sendOTP function...');
-        const emailSent = await sendOTP(email, otp, user.name);
-        console.log('📧 sendOTP returned:', emailSent);
-
-        if (!emailSent) {
-            console.log('❌ Email sending failed');
-            return res.status(500).json({ message: 'Failed to send OTP email' });
-        }
-
-        console.log('✅ Sending success response to client');
-        res.json({ message: 'OTP sent successfully' });
-    } catch (error) {
-        console.error('❌ Send Login OTP error:', error);
-        res.status(500).json({ message: 'Server Error', error: error.message });
-    }
-};
-
-exports.verifyLoginOTP = async (req, res) => {
-    try {
-        const { email, otp } = req.body;
-        const user = await User.findOne({ email });
-
-        if (!user) return res.status(400).json({ message: 'User not found' });
-
-        if (user.otp !== otp || user.otpExpires < Date.now()) {
-            return res.status(400).json({ message: 'Invalid or expired OTP' });
-        }
-
-        // Clear OTP after successful login and verify user
-        user.otp = undefined;
-        user.otpExpires = undefined;
-        if (!user.isVerified) {
-            user.isVerified = true;
-        }
-        await user.save();
-
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-        let assignedVehicleId = null;
-        if (user.role === 'driver') {
-            const Driver = require('../models/Driver');
-            const Vehicle = require('../models/Vehicle');
-            const driverProfile = await Driver.findOne({ userId: user._id });
-            if (driverProfile) {
-                const vehicle = await Vehicle.findOne({ currentDriver: driverProfile._id });
-                if (vehicle) {
-                    assignedVehicleId = vehicle._id;
-                }
-            }
-        }
-
-        res.json({
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                assignedVehicleId
-            }
-        });
-    } catch (error) {
-        console.error('Verify Login OTP error:', error);
+        console.error('Sync User Error:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
 
 exports.getMe = async (req, res) => {
     try {
-        console.log('👤 getMe called for user:', req.user.id);
-        const user = await User.findById(req.user.id).select('-password -otp -otpExpires');
+        // req.user is set by authMiddleware (which fetches from MongoDB)
+        const user = await User.findById(req.user.id);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -273,22 +90,10 @@ exports.getMe = async (req, res) => {
         if (user.role === 'driver') {
             const Driver = require('../models/Driver');
             const Vehicle = require('../models/Vehicle');
-
-            // First find the Driver profile associated with this User
             const driverProfile = await Driver.findOne({ userId: user._id });
-
             if (driverProfile) {
-                console.log('🔍 Found driver profile:', driverProfile._id);
-                // Then find the vehicle assigned to this Driver
                 const vehicle = await Vehicle.findOne({ currentDriver: driverProfile._id });
-                if (vehicle) {
-                    console.log('✅ Found vehicle:', vehicle._id);
-                    assignedVehicleId = vehicle._id;
-                } else {
-                    console.log('⚠️ No vehicle found for driver profile:', driverProfile._id);
-                }
-            } else {
-                console.log('⚠️ No driver profile found for user:', user._id);
+                if (vehicle) assignedVehicleId = vehicle._id;
             }
         }
 
@@ -300,7 +105,8 @@ exports.getMe = async (req, res) => {
             assignedVehicleId
         });
     } catch (error) {
-        console.error('Get Me error:', error);
+        console.error('Get Me Error:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
+

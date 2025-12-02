@@ -136,7 +136,13 @@ export default function Layout({ children, activeTab, onTabChange }: LayoutProps
             <Menu className="h-6 w-6" />
           </button>
           <h1 className="text-lg font-semibold text-gray-900">VehicleTracker</h1>
-          <div className="w-10" />
+          <button
+            onClick={logout}
+            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
+            title="Logout"
+          >
+            <LogOut className="h-6 w-6" />
+          </button>
         </div>
 
         {/* Main Content */}

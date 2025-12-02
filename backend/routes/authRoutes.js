@@ -1,21 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { register, verifyOTP, login, sendLoginOTP, verifyLoginOTP } = require('../controllers/authController');
+const { syncUser, getMe } = require('../controllers/authController');
+const authMiddleware = require('../middleware/authMiddleware');
 
-router.post('/register', register);
-router.post('/verify-otp', verifyOTP);
-router.post('/resend-otp', require('../controllers/authController').resendOTP);
-router.post('/login', login);
-router.post('/send-login-otp', sendLoginOTP);
-router.post('/verify-login-otp', verifyLoginOTP);
-router.get('/me', require('../middleware/authMiddleware')(['admin', 'fleet_owner', 'driver']), require('../controllers/authController').getMe);
+// Route to sync Firebase user with MongoDB (Login/Register)
+// This endpoint receives the Firebase ID token in the Authorization header
+router.post('/sync-user', syncUser);
 
-// Test endpoint to verify email is working
-router.post('/test-email', async (req, res) => {
-    console.log('📧 Test email endpoint called');
-    const { sendOTP } = require('../services/emailService');
-    const result = await sendOTP('srkulkarni1969.74@gmail.com', '123456', 'Test User');
-    res.json({ success: result, message: result ? 'Email sent!' : 'Email failed' });
-});
+// Get current user details
+router.get('/me', authMiddleware(['admin', 'fleet_owner', 'driver', 'personal']), getMe);
 
 module.exports = router;

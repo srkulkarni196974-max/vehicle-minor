@@ -1,7 +1,6 @@
 const cron = require('node-cron');
 const Vehicle = require('../models/Vehicle');
 const Reminder = require('../models/Reminder');
-const { sendOTP } = require('./emailService'); // Reusing email service
 const User = require('../models/User');
 
 const checkReminders = async () => {
@@ -38,13 +37,9 @@ const sendReminder = async (vehicle, type, date) => {
     const subject = `Reminder: ${type} for ${vehicle.registrationNumber}`;
     const text = `Hello ${vehicle.ownerId.name},\n\nThis is a reminder that your vehicle ${vehicle.registrationNumber} is due for ${type} on ${date.toDateString()}.\n\nPlease take necessary action.`;
 
-    // Use a modified sendEmail function (mocked here by reusing sendOTP logic or creating new)
-    // For now, we'll just log it or use the existing sendOTP function if it was generic enough.
-    // Let's assume we need a generic sendEmail function.
-
-    // Quick fix: Import transporter from emailService if exported, or just use console.log for now as "Email Sent"
-    console.log(`Sending email to ${email}: ${subject}`);
-    // In real app, call transporter.sendMail(...)
+    // TODO: Implement email sending via Firebase Cloud Functions or third-party service
+    console.log(`📧 Reminder: ${subject} to ${email}`);
+    console.log(`   Message: ${text}`);
 };
 
 // Schedule cron job to run every day at 9 AM

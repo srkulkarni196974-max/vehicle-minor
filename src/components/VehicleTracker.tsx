@@ -375,18 +375,49 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
                             />
                         )}
 
-                        {/* Trip Route Line (Straight line for reference) */}
+                        {/* Planned Route Lines */}
                         {tripPoints && (
-                            <Polyline
-                                positions={[
-                                    [tripPoints.start.lat, tripPoints.start.lng],
-                                    [tripPoints.end.lat, tripPoints.end.lng]
-                                ]}
-                                color="#3b82f6"
-                                weight={2}
-                                dashArray="10, 10"
-                                opacity={0.5}
-                            />
+                            <>
+                                {/* Line from Current Location to Start (if far away) */}
+                                {(() => {
+                                    const currentPos = L.latLng(currentLocation.lat, currentLocation.lng);
+                                    const startPos = L.latLng(tripPoints.start.lat, tripPoints.start.lng);
+                                    const distanceToStart = currentPos.distanceTo(startPos);
+
+                                    // If driver is more than 500m from start, show path to start
+                                    if (distanceToStart > 500) {
+                                        return (
+                                            <Polyline
+                                                positions={[
+                                                    [currentLocation.lat, currentLocation.lng],
+                                                    [tripPoints.start.lat, tripPoints.start.lng]
+                                                ]}
+                                                color="#f59e0b" // Amber/Orange for "getting to start"
+                                                weight={2}
+                                                dashArray="5, 10"
+                                                opacity={0.6}
+                                            >
+                                                <Popup>Path to Start Point ({Math.round(distanceToStart / 1000)} km)</Popup>
+                                            </Polyline>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+
+                                {/* Line from Start to End */}
+                                <Polyline
+                                    positions={[
+                                        [tripPoints.start.lat, tripPoints.start.lng],
+                                        [tripPoints.end.lat, tripPoints.end.lng]
+                                    ]}
+                                    color="#3b82f6" // Blue for "trip path"
+                                    weight={2}
+                                    dashArray="10, 10"
+                                    opacity={0.5}
+                                >
+                                    <Popup>Planned Trip Route</Popup>
+                                </Polyline>
+                            </>
                         )}
                     </MapContainer>
                 </div>

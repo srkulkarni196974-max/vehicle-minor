@@ -108,66 +108,6 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
                 setLocationHistory(prev => [...prev, [data.location.lat, data.location.lng] as [number, number]].slice(-100));
             }
         });
-
-        return () => {
-            socketRef.current?.disconnect();
-        };
-    }, [vehicleId]);
-
-    // Fetch vehicle data (Location & History)
-    const fetchVehicleData = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(`${API_URL}/api/vehicles/${vehicleId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const vehicle = response.data;
-
-            if (vehicle.currentLocation && vehicle.currentLocation.coordinates) {
-                const lng = vehicle.currentLocation.coordinates[0];
-                const lat = vehicle.currentLocation.coordinates[1];
-
-                // Only use coordinates if they're valid (not 0,0)
-                if (lat !== 0 && lng !== 0) {
-                    setCurrentLocation({
-                        lat: lat,
-                        lng: lng,
-                        speed: vehicle.currentLocation.speed || 0,
-                        timestamp: new Date(vehicle.currentLocation.timestamp || new Date()),
-                    });
-                }
-            }
-
-            if (vehicle.locationHistory && vehicle.locationHistory.length > 0) {
-                const history = vehicle.locationHistory
-                    .filter((pt: any) => pt.coordinates[1] !== 0 && pt.coordinates[0] !== 0)
-                    .map((pt: any) => [pt.coordinates[1], pt.coordinates[0]] as [number, number]);
-
-                if (history.length > 0) {
-                    setLocationHistory(history);
-                }
-            }
-        } catch (err) {
-            console.error('Error fetching vehicle data:', err);
-        }
-    };
-
-    // Initial fetch and polling
-    useEffect(() => {
-        if (vehicleId) {
-            fetchVehicleData();
-
-            // Poll every 5 seconds for updates (fallback for sockets)
-            const interval = setInterval(fetchVehicleData, 5000);
-            return () => clearInterval(interval);
-        }
-    }, [vehicleId]);
-
-    // Initialize tracking history with current location if empty
-    useEffect(() => {
-        if (locationHistory.length === 0 && currentLocation.lat !== 0 && currentLocation.lng !== 0) {
-            setLocationHistory([[currentLocation.lat, currentLocation.lng]]);
-        }
     }, [currentLocation]);
 
     const vehicleIcon = new L.Icon({

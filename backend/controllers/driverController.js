@@ -2,9 +2,10 @@ const Driver = require('../models/Driver');
 const User = require('../models/User');
 
 // Add a new driver
+// Add a new driver
 exports.addDriver = async (req, res) => {
     try {
-        const { name, email, password, licenseNumber, assignedVehicle } = req.body;
+        const { name, email, password, licenseNumber, assignedVehicle, status } = req.body;
 
         // 1. Create User account for driver
         let user = await User.findOne({ email });
@@ -21,23 +22,30 @@ exports.addDriver = async (req, res) => {
         await user.save();
 
         // 2. Create Driver profile
-        const driver = new Driver({
+        const driverData = {
             userId: user._id,
             ownerId: req.user.id,
             licenseNumber,
-            assignedVehicle
-        });
+            status: status || 'Available'
+        };
 
+        // Only assign vehicle if a valid ID is provided (handle empty string)
+        if (assignedVehicle && assignedVehicle.trim() !== '') {
+            driverData.assignedVehicle = assignedVehicle;
+        }
+
+        const driver = new Driver(driverData);
         await driver.save();
 
         // If vehicle assigned, update vehicle
-        if (assignedVehicle) {
+        if (driver.assignedVehicle) {
             const Vehicle = require('../models/Vehicle');
-            await Vehicle.findByIdAndUpdate(assignedVehicle, { currentDriver: driver._id });
+            await Vehicle.findByIdAndUpdate(driver.assignedVehicle, { currentDriver: driver._id });
         }
 
         res.status(201).json({ message: 'Driver added successfully', driver });
     } catch (error) {
+        console.error('Error adding driver:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };

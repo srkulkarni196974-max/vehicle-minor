@@ -114,47 +114,52 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
         };
     }, [vehicleId]);
 
-    // Fetch initial vehicle data from API
-    useEffect(() => {
-        const fetchVehicleData = async () => {
-            try {
-                const token = localStorage.getItem('token');
-                const response = await axios.get(`${API_URL}/api/vehicles/${vehicleId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const vehicle = response.data;
+    // Fetch vehicle data (Location & History)
+    const fetchVehicleData = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_URL}/api/vehicles/${vehicleId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const vehicle = response.data;
 
-                if (vehicle.currentLocation && vehicle.currentLocation.coordinates) {
-                    const lng = vehicle.currentLocation.coordinates[0];
-                    const lat = vehicle.currentLocation.coordinates[1];
+            if (vehicle.currentLocation && vehicle.currentLocation.coordinates) {
+                const lng = vehicle.currentLocation.coordinates[0];
+                const lat = vehicle.currentLocation.coordinates[1];
 
-                    // Only use coordinates if they're valid (not 0,0)
-                    if (lat !== 0 && lng !== 0) {
-                        setCurrentLocation({
-                            lat: lat,
-                            lng: lng,
-                            speed: vehicle.currentLocation.speed || 0,
-                            timestamp: new Date(vehicle.currentLocation.timestamp || new Date()),
-                        });
-                    }
+                // Only use coordinates if they're valid (not 0,0)
+                if (lat !== 0 && lng !== 0) {
+                    setCurrentLocation({
+                        lat: lat,
+                        lng: lng,
+                        speed: vehicle.currentLocation.speed || 0,
+                        timestamp: new Date(vehicle.currentLocation.timestamp || new Date()),
+                    });
                 }
-
-                if (vehicle.locationHistory && vehicle.locationHistory.length > 0) {
-                    const history = vehicle.locationHistory
-                        .filter((pt: any) => pt.coordinates[1] !== 0 && pt.coordinates[0] !== 0)
-                        .map((pt: any) => [pt.coordinates[1], pt.coordinates[0]] as [number, number]);
-
-                    if (history.length > 0) {
-                        setLocationHistory(history);
-                    }
-                }
-            } catch (err) {
-                console.error('Error fetching vehicle data:', err);
             }
-        };
 
+            if (vehicle.locationHistory && vehicle.locationHistory.length > 0) {
+                const history = vehicle.locationHistory
+                    .filter((pt: any) => pt.coordinates[1] !== 0 && pt.coordinates[0] !== 0)
+                    .map((pt: any) => [pt.coordinates[1], pt.coordinates[0]] as [number, number]);
+
+                if (history.length > 0) {
+                    setLocationHistory(history);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching vehicle data:', err);
+        }
+    };
+
+    // Initial fetch and polling
+    useEffect(() => {
         if (vehicleId) {
             fetchVehicleData();
+
+            // Poll every 5 seconds for updates (fallback for sockets)
+            const interval = setInterval(fetchVehicleData, 5000);
+            return () => clearInterval(interval);
         }
     }, [vehicleId]);
 
@@ -372,50 +377,52 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
                                 color="#7c3aed"
                                 weight={3}
                                 opacity={0.7}
-                            />
+                            >
+                                <Popup>Travelled Path</Popup>
+                            </Polyline>
                         )}
 
                         {/* Planned Route Lines */}
                         {tripPoints && (
                             <>
-                                {/* Line from Current Location to Start (if far away) */}
+                                {/* Line from Current Location to Destination (Remaining Route) */}
                                 {(() => {
                                     const currentPos = L.latLng(currentLocation.lat, currentLocation.lng);
-                                    const startPos = L.latLng(tripPoints.start.lat, tripPoints.start.lng);
-                                    const distanceToStart = currentPos.distanceTo(startPos);
+                                    const endPos = L.latLng(tripPoints.end.lat, tripPoints.end.lng);
+                                    const distanceToEnd = currentPos.distanceTo(endPos);
 
-                                    // If driver is more than 500m from start, show path to start
-                                    if (distanceToStart > 500) {
+                                    // Only show if we are not at the destination yet (e.g. > 100m)
+                                    if (distanceToEnd > 100) {
                                         return (
                                             <Polyline
                                                 positions={[
                                                     [currentLocation.lat, currentLocation.lng],
-                                                    [tripPoints.start.lat, tripPoints.start.lng]
+                                                    [tripPoints.end.lat, tripPoints.end.lng]
                                                 ]}
-                                                color="#f59e0b" // Amber/Orange for "getting to start"
-                                                weight={2}
-                                                dashArray="5, 10"
-                                                opacity={0.6}
+                                                color="#2563eb" // Blue
+                                                weight={4}
+                                                dashArray="10, 10"
+                                                opacity={0.8}
                                             >
-                                                <Popup>Path to Start Point ({Math.round(distanceToStart / 1000)} km)</Popup>
+                                                <Popup>Remaining Route ({Math.round(distanceToEnd / 1000)} km)</Popup>
                                             </Polyline>
                                         );
                                     }
                                     return null;
                                 })()}
 
-                                {/* Line from Start to End */}
+                                {/* Original Planned Route (Start -> End) - Fainter */}
                                 <Polyline
                                     positions={[
                                         [tripPoints.start.lat, tripPoints.start.lng],
                                         [tripPoints.end.lat, tripPoints.end.lng]
                                     ]}
-                                    color="#3b82f6" // Blue for "trip path"
+                                    color="#94a3b8" // Gray
                                     weight={2}
-                                    dashArray="10, 10"
-                                    opacity={0.5}
+                                    dashArray="5, 5"
+                                    opacity={0.4}
                                 >
-                                    <Popup>Planned Trip Route</Popup>
+                                    <Popup>Original Planned Route</Popup>
                                 </Polyline>
                             </>
                         )}

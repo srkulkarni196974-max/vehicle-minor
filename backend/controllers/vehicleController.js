@@ -83,14 +83,14 @@ exports.getVehicleById = async (req, res) => {
         if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
 
         // Access control
-        const isOwner = vehicle.ownerId.toString() === req.user.id;
+        const isOwner = vehicle.ownerId.toString() === req.user.id.toString();
         const isAdmin = req.user.role === 'admin';
         let isAssignedDriver = false;
 
         if (req.user.role === 'driver' && vehicle.currentDriver && vehicle.currentDriver.userId) {
             // Check if the logged-in user is the driver assigned to this vehicle
             // Note: vehicle.currentDriver.userId is populated with the User object
-            isAssignedDriver = vehicle.currentDriver.userId._id.toString() === req.user.id;
+            isAssignedDriver = vehicle.currentDriver.userId._id.toString() === req.user.id.toString();
         }
 
         if (!isAdmin && !isOwner && !isAssignedDriver) {
@@ -109,7 +109,7 @@ exports.updateVehicle = async (req, res) => {
         const vehicle = await Vehicle.findById(req.params.id);
         if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
 
-        if (req.user.role !== 'admin' && vehicle.ownerId.toString() !== req.user.id) {
+        if (req.user.role !== 'admin' && vehicle.ownerId.toString() !== req.user.id.toString()) {
             return res.status(403).json({ message: 'Access denied' });
         }
 
@@ -131,7 +131,7 @@ exports.deleteVehicle = async (req, res) => {
         const vehicle = await Vehicle.findById(req.params.id);
         if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
 
-        if (req.user.role !== 'admin' && vehicle.ownerId.toString() !== req.user.id) {
+        if (req.user.role !== 'admin' && vehicle.ownerId.toString() !== req.user.id.toString()) {
             return res.status(403).json({ message: 'Access denied' });
         }
 

@@ -1,34 +1,28 @@
 require('dotenv').config();
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendTestEmail = async () => {
-    console.log('Attempting to send email...');
-    console.log(`User: ${process.env.EMAIL_USER}`);
-    // Masking password for security in logs, but printing length to ensure it's read
-    console.log(`Pass length: ${process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0}`);
-
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: process.env.EMAIL_USER, // Send to self
-        subject: 'Test Email from Vehicle System',
-        text: 'If you see this, email sending is working!'
-    };
+    console.log('Attempting to send email with Resend...');
 
     try {
-        const info = await transporter.sendMail(mailOptions);
+        const { data, error } = await resend.emails.send({
+            from: 'VehicleTracker <onboarding@resend.dev>',
+            to: ['sampaisa@example.com'], // Replace with a valid email or use env var
+            subject: 'Test Email from Vehicle System (Resend)',
+            html: '<strong>If you see this, Resend email sending is working!</strong>'
+        });
+
+        if (error) {
+            console.error('Error sending email:', error);
+            return;
+        }
+
         console.log('Email sent successfully!');
-        console.log('Message ID:', info.messageId);
+        console.log('ID:', data.id);
     } catch (error) {
-        console.error('Error sending email:');
-        console.error(error);
+        console.error('Error sending email:', error);
     }
 };
 

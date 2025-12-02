@@ -1,14 +1,8 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const createOTPEmailHTML = (otp, recipientName = 'sampaisa') => {
+const createOTPEmailHTML = (otp, recipientName = 'User') => {
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -87,20 +81,20 @@ const createOTPEmailHTML = (otp, recipientName = 'sampaisa') => {
 };
 
 const sendOTP = async (email, otp, recipientName) => {
-    const mailOptions = {
-        from: {
-            name: 'VehicleTracker',
-            address: process.env.EMAIL_USER
-        },
-        to: email,
-        subject: 'Your OTP for VehicleTracker Login',
-        text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
-        html: createOTPEmailHTML(otp, recipientName)
-    };
-
     try {
-        await transporter.sendMail(mailOptions);
-        console.log('OTP sent to ' + email);
+        const { data, error } = await resend.emails.send({
+            from: 'VehicleTracker <onboarding@resend.dev>', // Use verified domain or onboarding@resend.dev for testing
+            to: [email],
+            subject: 'Your OTP for VehicleTracker Login',
+            html: createOTPEmailHTML(otp, recipientName)
+        });
+
+        if (error) {
+            console.error('Error sending email:', error);
+            return false;
+        }
+
+        console.log('OTP sent to ' + email, 'ID:', data.id);
         return true;
     } catch (error) {
         console.error('Error sending email:', error);
@@ -109,3 +103,4 @@ const sendOTP = async (email, otp, recipientName) => {
 };
 
 module.exports = { sendOTP };
+

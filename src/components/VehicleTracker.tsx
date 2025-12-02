@@ -51,8 +51,8 @@ interface VehicleTrackerProps {
 
 export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onSaveTrip }: VehicleTrackerProps) {
     const [currentLocation, setCurrentLocation] = useState<VehicleLocation>({
-        lat: 18.5204, // Default: Pune, India
-        lng: 73.8567,
+        lat: tripPoints?.start.lat || 18.5204, // Default to Trip Start or Pune
+        lng: tripPoints?.start.lng || 73.8567,
         speed: 0,
         timestamp: new Date(),
     });

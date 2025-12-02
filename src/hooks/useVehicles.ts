@@ -167,6 +167,16 @@ export function useVehicles() {
     }
   };
 
+  const deleteTrip = async (tripId: string) => {
+    try {
+      await axios.delete(`/trips/${tripId}`);
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting trip:", error);
+      throw error;
+    }
+  };
+
   return {
     vehicles,
     trips,
@@ -176,6 +186,7 @@ export function useVehicles() {
     editVehicle,
     addTrip,
     addExpense,
+    deleteTrip,
     refreshData: fetchData
   };
 }

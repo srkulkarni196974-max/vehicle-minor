@@ -1,14 +1,32 @@
 const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // use SSL
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+// Check if we should use Resend (in production/cloud environments where SMTP is blocked)
+const useResend = process.env.USE_RESEND === 'true' || process.env.RESEND_API_KEY && !process.env.EMAIL_PASS;
+
+let transporter = null;
+let Resend = null;
+let resend = null;
+
+if (useResend) {
+    console.log('📧 Using Resend API for emails');
+    const ResendModule = require('resend');
+    Resend = ResendModule.Resend;
+    resend = new Resend(process.env.RESEND_API_KEY);
+} else {
+    console.log('📧 Using Gmail SMTP for emails');
+    const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        },
+        tls: {
+            rejectUnauthorized: false
+        }
+    });
+}
 
 const createOTPEmailHTML = (otp, recipientName = 'User') => {
     return `
@@ -91,37 +109,65 @@ const createOTPEmailHTML = (otp, recipientName = 'User') => {
 const sendOTP = async (email, otp, recipientName) => {
     console.log('📧 sendOTP called for:', email);
 
-    const mailOptions = {
-        from: {
-            name: 'VehicleTracker',
-            address: process.env.EMAIL_USER
-        },
-        to: email,
-        subject: 'Your OTP for VehicleTracker Login',
-        text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
-        html: createOTPEmailHTML(otp, recipientName)
-    };
-
-    // Use callback-style for better reliability in Express context
-    return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-            console.error('❌ Email sending timeout after 30 seconds');
-            resolve(false); // Resolve with false on timeout
-        }, 30000);
-
-        transporter.sendMail(mailOptions, (error, info) => {
-            clearTimeout(timeout);
+    if (useResend) {
+        // Use Resend API
+        try {
+            const { data, error } = await resend.emails.send({
+                from: 'VehicleTracker <onboarding@resend.dev>',
+                to: [email],
+                subject: 'Your OTP for VehicleTracker Login',
+                html: createOTPEmailHTML(otp, recipientName)
+            });
 
             if (error) {
-                console.error('❌ Error sending email:', error.message);
-                resolve(false); // Resolve with false instead of rejecting
-            } else {
-                console.log('✅ OTP sent successfully to', email);
-                console.log('✅ Message ID:', info.messageId);
-                resolve(true);
+                console.error('❌ Resend error:', error);
+                return false;
             }
+
+            console.log('✅ OTP sent via Resend to', email);
+            console.log('✅ Email ID:', data.id);
+            return true;
+        } catch (error) {
+            console.error('❌ Error sending via Resend:', error.message);
+            return false;
+        }
+    } else {
+        // Use Gmail SMTP (callback-style for reliability)
+        const mailOptions = {
+            from: {
+                name: 'VehicleTracker',
+                address: process.env.EMAIL_USER
+            },
+            to: email,
+            subject: 'Your OTP for VehicleTracker Login',
+            text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
+            html: createOTPEmailHTML(otp, recipientName)
+        };
+
+        return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                console.error('❌ Email sending timeout after 30 seconds');
+                resolve(false);
+            }, 30000);
+
+            transporter.sendMail(mailOptions, (error, info) => {
+                clearTimeout(timeout);
+
+                if (error) {
+                    console.error('❌ Gmail SMTP error:', error.message);
+                    resolve(false);
+                } else {
+                    console.log('✅ OTP sent via Gmail to', email);
+                    console.log('✅ Message ID:', info.messageId);
+                    resolve(true);
+                }
+            });
         });
-    });
+        console.log("EMAIL_USER:", process.env.EMAIL_USER);
+        console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "Loaded" : "Missing");
+
+    }
+
 };
 
 module.exports = { sendOTP };

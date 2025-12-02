@@ -90,8 +90,6 @@ const createOTPEmailHTML = (otp, recipientName = 'User') => {
 
 const sendOTP = async (email, otp, recipientName) => {
     console.log('📧 sendOTP called for:', email);
-    console.log('📧 Using EMAIL_USER:', process.env.EMAIL_USER);
-    console.log('📧 EMAIL_PASS configured:', !!process.env.EMAIL_PASS);
 
     const mailOptions = {
         from: {
@@ -104,25 +102,26 @@ const sendOTP = async (email, otp, recipientName) => {
         html: createOTPEmailHTML(otp, recipientName)
     };
 
-    try {
-        console.log('📧 Attempting to send email...');
+    // Use callback-style for better reliability in Express context
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            console.error('❌ Email sending timeout after 30 seconds');
+            resolve(false); // Resolve with false on timeout
+        }, 30000);
 
-        // Add timeout to prevent infinite hanging
-        const emailPromise = transporter.sendMail(mailOptions);
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Email sending timeout after 30 seconds')), 30000)
-        );
+        transporter.sendMail(mailOptions, (error, info) => {
+            clearTimeout(timeout);
 
-        await Promise.race([emailPromise, timeoutPromise]);
-
-        console.log('✅ OTP sent successfully to ' + email);
-        return true;
-    } catch (error) {
-        console.error('❌ Error sending email:', error.message);
-        console.error('❌ Full error:', error);
-        return false;
-    }
+            if (error) {
+                console.error('❌ Error sending email:', error.message);
+                resolve(false); // Resolve with false instead of rejecting
+            } else {
+                console.log('✅ OTP sent successfully to', email);
+                console.log('✅ Message ID:', info.messageId);
+                resolve(true);
+            }
+        });
+    });
 };
 
 module.exports = { sendOTP };
-

@@ -7,6 +7,7 @@ import { API_URL } from '../config';
 // Use centralized API URL from config
 axios.defaults.baseURL = `${API_URL}/api`;
 axios.defaults.withCredentials = true;
+axios.defaults.timeout = 60000; // 60 second timeout for email operations
 
 interface AuthContextType {
   user: User | null;
@@ -97,9 +98,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const sendLoginOTP = async (email: string) => {
     setApiLoading(true);
+    console.log('🎯 Frontend: Calling send-login-otp for:', email);
+    console.log('🎯 Frontend: API URL:', `${axios.defaults.baseURL}/auth/send-login-otp`);
     try {
-      await axios.post('/auth/send-login-otp', { email });
+      const response = await axios.post('/auth/send-login-otp', { email });
+      console.log('✅ Frontend: OTP request succeeded:', response.data);
     } catch (error: any) {
+      console.error('❌ Frontend: OTP request failed:', error);
+      console.error('❌ Frontend: Error details:', error.response?.data);
       throw new Error(error.response?.data?.message || 'Failed to send login OTP');
     } finally {
       setApiLoading(false);

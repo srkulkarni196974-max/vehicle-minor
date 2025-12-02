@@ -19,7 +19,7 @@ app.use(cors({
         const allowedOrigins = [
             'http://localhost:5173',
             'http://localhost:5000',
-            'https://vehicle-management-tracker.netlify.app',
+            'https://vehicle-tracker-63m.pages.dev',
             'https://vehicle-management-backend-ap3f.onrender.com'
         ];
 
@@ -27,9 +27,9 @@ app.use(cors({
         const isLocalNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(origin);
         const isNetlify = origin.endsWith('.netlify.app');
         const isRender = origin.includes('onrender.com');
+        const isCloudflarePages = origin.endsWith('.pages.dev');
 
-
-        if (allowedOrigins.includes(origin) || isLocalNetwork || isNetlify || isRender) {
+        if (allowedOrigins.includes(origin) || isLocalNetwork || isNetlify || isRender || isCloudflarePages) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
@@ -70,12 +70,12 @@ const io = new Server(server, {
             if (!origin) return callback(null, true);
 
             // Allow localhost and local network IPs
-            const isLocalNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(origin);
+            const isLocalNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\-(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(origin);
             const isNetlify = origin.endsWith('.netlify.app');
             const isRender = origin.includes('onrender.com');
+            const isCloudflarePages = origin.endsWith('.pages.dev');
 
-
-            if (isLocalNetwork || isNetlify || isRender) {
+            if (isLocalNetwork || isNetlify || isRender || isCloudflarePages) {
                 callback(null, true);
             } else {
                 callback(null, false);

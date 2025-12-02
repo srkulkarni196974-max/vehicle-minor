@@ -10,13 +10,13 @@ const getApiUrl = () => {
 
     // 2. SAFEGUARD: Explicitly check for deployed frontend domain FIRST
     // This prevents the "Mixed Content" error if PROD flag fails
-    if (hostname.includes('netlify.app')) {
+    if (hostname.includes('netlify.app') || hostname.includes('pages.dev')) {
         return 'https://vehicle-management-backend-ap3f.onrender.com';
     }
 
     // 3. In development, check if accessed via network IP (for mobile testing)
     // Only use this if it's an IP address or local hostname, NOT a public domain
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.includes('netlify.app')) {
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.includes('netlify.app') && !hostname.includes('pages.dev')) {
         return `http://${hostname}:5000`;
     }
 

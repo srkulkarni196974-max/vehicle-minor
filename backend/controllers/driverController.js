@@ -57,7 +57,7 @@ exports.updateDriver = async (req, res) => {
         const driver = await Driver.findById(req.params.id);
 
         if (!driver) return res.status(404).json({ message: 'Driver not found' });
-        if (req.user.role !== 'admin' && driver.ownerId.toString() !== req.user.id) {
+        if (req.user.role !== 'admin' && driver.ownerId.toString() !== req.user.id.toString()) {
             return res.status(403).json({ message: 'Access denied' });
         }
 
@@ -107,7 +107,7 @@ exports.assignVehicle = async (req, res) => {
         if (!driver) return res.status(404).json({ message: 'Driver not found' });
 
         // Check ownership
-        if (req.user.role !== 'admin' && driver.ownerId.toString() !== req.user.id) {
+        if (req.user.role !== 'admin' && driver.ownerId.toString() !== req.user.id.toString()) {
             return res.status(403).json({ message: 'Access denied' });
         }
 

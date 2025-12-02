@@ -89,6 +89,10 @@ const createOTPEmailHTML = (otp, recipientName = 'User') => {
 };
 
 const sendOTP = async (email, otp, recipientName) => {
+    console.log('📧 sendOTP called for:', email);
+    console.log('📧 Using EMAIL_USER:', process.env.EMAIL_USER);
+    console.log('📧 EMAIL_PASS configured:', !!process.env.EMAIL_PASS);
+
     const mailOptions = {
         from: {
             name: 'VehicleTracker',
@@ -101,11 +105,21 @@ const sendOTP = async (email, otp, recipientName) => {
     };
 
     try {
-        await transporter.sendMail(mailOptions);
-        console.log('OTP sent to ' + email);
+        console.log('📧 Attempting to send email...');
+
+        // Add timeout to prevent infinite hanging
+        const emailPromise = transporter.sendMail(mailOptions);
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Email sending timeout after 30 seconds')), 30000)
+        );
+
+        await Promise.race([emailPromise, timeoutPromise]);
+
+        console.log('✅ OTP sent successfully to ' + email);
         return true;
     } catch (error) {
-        console.error('Error sending email:', error);
+        console.error('❌ Error sending email:', error.message);
+        console.error('❌ Full error:', error);
         return false;
     }
 };

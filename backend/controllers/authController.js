@@ -160,31 +160,53 @@ exports.login = async (req, res) => {
 
 exports.sendLoginOTP = async (req, res) => {
     try {
-        const { email } = req.body;
-        const user = await User.findOne({ email });
+        console.log('🎯 sendLoginOTP endpoint called');
+        console.log('🎯 Request body:', req.body);
 
-        if (!user) return res.status(400).json({ message: 'User not found' });
+        const { email } = req.body;
+        console.log('🎯 Looking for user with email:', email);
+
+        const user = await User.findOne({ email });
+        console.log('🎯 User lookup complete. Found:', !!user);
+
+        if (!user) {
+            console.log('❌ User not found');
+            return res.status(400).json({ message: 'User not found' });
+        }
+
+        console.log('🎯 User details - isActive:', user.isActive, 'isVerified:', user.isVerified);
+
         // Allow unverified users to receive OTP to verify their account
         // if (!user.isVerified) return res.status(400).json({ message: 'Please verify your email first' });
-        if (!user.isActive) return res.status(403).json({ message: 'Account is inactive' });
+        if (!user.isActive) {
+            console.log('❌ User is inactive');
+            return res.status(403).json({ message: 'Account is inactive' });
+        }
 
         const otp = generateOTP();
         const otpExpires = Date.now() + 10 * 60 * 1000; // 10 mins
 
+        console.log('🎯 Generated OTP:', otp);
+
         user.otp = otp;
         user.otpExpires = otpExpires;
+        console.log('🎯 Saving user with OTP...');
         await user.save();
+        console.log('✅ User saved successfully');
 
-        console.log('Sending Login OTP to:', email);
+        console.log('📧 Calling sendOTP function...');
         const emailSent = await sendOTP(email, otp, user.name);
+        console.log('📧 sendOTP returned:', emailSent);
 
         if (!emailSent) {
+            console.log('❌ Email sending failed');
             return res.status(500).json({ message: 'Failed to send OTP email' });
         }
 
+        console.log('✅ Sending success response to client');
         res.json({ message: 'OTP sent successfully' });
     } catch (error) {
-        console.error('Send Login OTP error:', error);
+        console.error('❌ Send Login OTP error:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };

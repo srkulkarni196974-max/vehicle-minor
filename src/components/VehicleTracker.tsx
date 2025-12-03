@@ -57,6 +57,7 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
         timestamp: new Date(),
     });
     const [locationHistory, setLocationHistory] = useState<[number, number][]>([]);
+    const [internalTripPoints, setInternalTripPoints] = useState<TripPoints | undefined>(undefined);
     const [isConnected, setIsConnected] = useState(false);
     const socketRef = useRef<Socket | null>(null);
 
@@ -108,7 +109,86 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
                 setLocationHistory(prev => [...prev, [data.location.lat, data.location.lng] as [number, number]].slice(-100));
             }
         });
-    }, [currentLocation]);
+
+        return () => {
+            socketRef.current?.disconnect();
+        };
+    }, [vehicleId]); // Removed currentLocation from dependency to avoid re-connecting on every update
+
+    // Fetch vehicle data (Location & History) & Active Trip
+    const fetchVehicleData = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const headers = { Authorization: `Bearer ${token}` };
+
+            // 1. Fetch Vehicle Data
+            const response = await axios.get(`${API_URL}/api/vehicles/${vehicleId}`, { headers });
+            const vehicle = response.data;
+
+            if (vehicle.currentLocation && vehicle.currentLocation.coordinates) {
+                const lng = vehicle.currentLocation.coordinates[0];
+                const lat = vehicle.currentLocation.coordinates[1];
+
+                if (lat !== 0 && lng !== 0) {
+                    setCurrentLocation({
+                        lat: lat,
+                        lng: lng,
+                        speed: vehicle.currentLocation.speed || 0,
+                        timestamp: new Date(vehicle.currentLocation.timestamp || new Date()),
+                    });
+                }
+            }
+
+            if (vehicle.locationHistory && vehicle.locationHistory.length > 0) {
+                const history = vehicle.locationHistory
+                    .filter((pt: any) => pt.coordinates[1] !== 0 && pt.coordinates[0] !== 0)
+                    .map((pt: any) => [pt.coordinates[1], pt.coordinates[0]] as [number, number]);
+
+                if (history.length > 0) {
+                    setLocationHistory(history);
+                }
+            }
+
+            // 2. Fetch Active Trip (if tripPoints not provided via props)
+            if (!tripPoints) {
+                const tripsResponse = await axios.get(`${API_URL}/api/trips`, { headers });
+                // Filter for this vehicle and status 'Ongoing'
+                const activeTrip = tripsResponse.data.find((t: any) =>
+                    (t.vehicleId._id === vehicleId || t.vehicleId === vehicleId) &&
+                    t.status === 'Ongoing'
+                );
+
+                if (activeTrip && activeTrip.startLocationLat && activeTrip.endLocationLat) {
+                    setInternalTripPoints({
+                        start: {
+                            lat: parseFloat(activeTrip.startLocationLat),
+                            lng: parseFloat(activeTrip.startLocationLon),
+                            label: activeTrip.startLocation
+                        },
+                        end: {
+                            lat: parseFloat(activeTrip.endLocationLat),
+                            lng: parseFloat(activeTrip.endLocationLon),
+                            label: activeTrip.endLocation
+                        }
+                    });
+                }
+            }
+
+        } catch (err) {
+            console.error('Error fetching vehicle data:', err);
+        }
+    };
+
+    // Initial fetch and polling
+    useEffect(() => {
+        if (vehicleId) {
+            fetchVehicleData();
+            const interval = setInterval(fetchVehicleData, 5000);
+            return () => clearInterval(interval);
+        }
+    }, [vehicleId]);
+
+    const activeTripPoints = tripPoints || internalTripPoints;
 
     const vehicleIcon = new L.Icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
@@ -139,11 +219,11 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
 
     // Calculate bounds if trip points are present
     const getBounds = (): L.LatLngBoundsExpression | undefined => {
-        if (!tripPoints) return undefined;
+        if (!activeTripPoints) return undefined;
 
         const points: [number, number][] = [
-            [tripPoints.start.lat, tripPoints.start.lng],
-            [tripPoints.end.lat, tripPoints.end.lng],
+            [activeTripPoints.start.lat, activeTripPoints.start.lng],
+            [activeTripPoints.end.lat, activeTripPoints.end.lng],
             [currentLocation.lat, currentLocation.lng]
         ];
 
@@ -241,6 +321,36 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
                 </div>
             </div>
 
+            {/* Active Trip Info */}
+            {activeTripPoints && (
+                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-4 rounded-lg border border-indigo-200">
+                    <h4 className="font-semibold text-indigo-900 mb-3 flex items-center gap-2">
+                        <Navigation className="h-5 w-5" />
+                        Active Trip Details
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-start gap-3">
+                            <div className="mt-1">
+                                <div className="h-3 w-3 rounded-full bg-green-500 ring-4 ring-green-100"></div>
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Start Location</p>
+                                <p className="font-medium text-gray-900">{activeTripPoints.start.label}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="mt-1">
+                                <div className="h-3 w-3 rounded-full bg-blue-500 ring-4 ring-blue-100"></div>
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</p>
+                                <p className="font-medium text-gray-900">{activeTripPoints.end.label}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Map */}
             <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                 <div className="p-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
@@ -274,24 +384,24 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
                         />
 
                         {/* Start Point Marker */}
-                        {tripPoints && (
-                            <Marker position={[tripPoints.start.lat, tripPoints.start.lng]} icon={startIcon}>
+                        {activeTripPoints && (
+                            <Marker position={[activeTripPoints.start.lat, activeTripPoints.start.lng]} icon={startIcon}>
                                 <Popup>
                                     <div className="text-center">
                                         <p className="font-semibold text-green-600">Start Point</p>
-                                        <p className="text-sm text-gray-600">{tripPoints.start.label}</p>
+                                        <p className="text-sm text-gray-600">{activeTripPoints.start.label}</p>
                                     </div>
                                 </Popup>
                             </Marker>
                         )}
 
                         {/* End Point Marker */}
-                        {tripPoints && (
-                            <Marker position={[tripPoints.end.lat, tripPoints.end.lng]} icon={endIcon}>
+                        {activeTripPoints && (
+                            <Marker position={[activeTripPoints.end.lat, activeTripPoints.end.lng]} icon={endIcon}>
                                 <Popup>
                                     <div className="text-center">
                                         <p className="font-semibold text-blue-600">Destination</p>
-                                        <p className="text-sm text-gray-600">{tripPoints.end.label}</p>
+                                        <p className="text-sm text-gray-600">{activeTripPoints.end.label}</p>
                                     </div>
                                 </Popup>
                             </Marker>
@@ -323,12 +433,12 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
                         )}
 
                         {/* Planned Route Lines */}
-                        {tripPoints && (
+                        {activeTripPoints && (
                             <>
                                 {/* Line from Current Location to Destination (Remaining Route) */}
                                 {(() => {
                                     const currentPos = L.latLng(currentLocation.lat, currentLocation.lng);
-                                    const endPos = L.latLng(tripPoints.end.lat, tripPoints.end.lng);
+                                    const endPos = L.latLng(activeTripPoints.end.lat, activeTripPoints.end.lng);
                                     const distanceToEnd = currentPos.distanceTo(endPos);
 
                                     // Only show if we are not at the destination yet (e.g. > 100m)
@@ -337,7 +447,7 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
                                             <Polyline
                                                 positions={[
                                                     [currentLocation.lat, currentLocation.lng],
-                                                    [tripPoints.end.lat, tripPoints.end.lng]
+                                                    [activeTripPoints.end.lat, activeTripPoints.end.lng]
                                                 ]}
                                                 color="#2563eb" // Blue
                                                 weight={4}
@@ -354,8 +464,8 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
                                 {/* Original Planned Route (Start -> End) - Fainter */}
                                 <Polyline
                                     positions={[
-                                        [tripPoints.start.lat, tripPoints.start.lng],
-                                        [tripPoints.end.lat, tripPoints.end.lng]
+                                        [activeTripPoints.start.lat, activeTripPoints.start.lng],
+                                        [activeTripPoints.end.lat, activeTripPoints.end.lng]
                                     ]}
                                     color="#94a3b8" // Gray
                                     weight={2}

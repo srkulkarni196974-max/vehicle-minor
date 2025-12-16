@@ -59,7 +59,61 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
     const [locationHistory, setLocationHistory] = useState<[number, number][]>([]);
     const [internalTripPoints, setInternalTripPoints] = useState<TripPoints | undefined>(undefined);
     const [isConnected, setIsConnected] = useState(false);
+    const [fullRouteCoordinates, setFullRouteCoordinates] = useState<[number, number][]>([]);
+    const [remainingRouteCoordinates, setRemainingRouteCoordinates] = useState<[number, number][]>([]);
     const socketRef = useRef<Socket | null>(null);
+
+    // Fetch Route from OSRM
+    useEffect(() => {
+        const fetchRoute = async () => {
+            const points = tripPoints || internalTripPoints;
+            if (!points) return;
+
+            try {
+                // OSRM expects {lon},{lat}
+                const start = `${points.start.lng},${points.start.lat}`;
+                const end = `${points.end.lng},${points.end.lat}`;
+                const url = `https://router.project-osrm.org/route/v1/driving/${start};${end}?overview=full&geometries=geojson`;
+
+                const response = await axios.get(url);
+                if (response.data.routes && response.data.routes.length > 0) {
+                    const coordinates = response.data.routes[0].geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]] as [number, number]);
+                    setFullRouteCoordinates(coordinates);
+                    setRemainingRouteCoordinates(coordinates);
+                }
+            } catch (error) {
+                console.error('Error fetching route:', error);
+            }
+        };
+
+        fetchRoute();
+    }, [tripPoints, internalTripPoints]);
+
+    // Update Remaining Route based on Current Location
+    useEffect(() => {
+        if (fullRouteCoordinates.length === 0) return;
+
+        // Find the closest point on the route to the current location
+        let minDistance = Infinity;
+        let closestIndex = 0;
+
+        const currentLatLng = L.latLng(currentLocation.lat, currentLocation.lng);
+
+        for (let i = 0; i < fullRouteCoordinates.length; i++) {
+            const point = L.latLng(fullRouteCoordinates[i][0], fullRouteCoordinates[i][1]);
+            const distance = currentLatLng.distanceTo(point);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestIndex = i;
+            }
+        }
+
+        // Slice the route from the closest point to the end
+        // Also prepend the current location to make it smooth
+        const remaining = fullRouteCoordinates.slice(closestIndex);
+        setRemainingRouteCoordinates([[currentLocation.lat, currentLocation.lng], ...remaining]);
+
+    }, [currentLocation, fullRouteCoordinates]);
 
     // Initialize Socket.io
     useEffect(() => {
@@ -420,61 +474,28 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
                             </Popup>
                         </Marker>
 
-                        {/* Route History */}
+                        {/* Route History (Traveled Path) */}
                         {locationHistory.length > 1 && (
                             <Polyline
                                 positions={locationHistory}
-                                color="#7c3aed"
-                                weight={3}
-                                opacity={0.7}
+                                color="#94a3b8" // Gray for history
+                                weight={4}
+                                opacity={0.5}
                             >
                                 <Popup>Travelled Path</Popup>
                             </Polyline>
                         )}
 
-                        {/* Planned Route Lines */}
-                        {activeTripPoints && (
-                            <>
-                                {/* Line from Current Location to Destination (Remaining Route) */}
-                                {(() => {
-                                    const currentPos = L.latLng(currentLocation.lat, currentLocation.lng);
-                                    const endPos = L.latLng(activeTripPoints.end.lat, activeTripPoints.end.lng);
-                                    const distanceToEnd = currentPos.distanceTo(endPos);
-
-                                    // Only show if we are not at the destination yet (e.g. > 100m)
-                                    if (distanceToEnd > 100) {
-                                        return (
-                                            <Polyline
-                                                positions={[
-                                                    [currentLocation.lat, currentLocation.lng],
-                                                    [activeTripPoints.end.lat, activeTripPoints.end.lng]
-                                                ]}
-                                                color="#2563eb" // Blue
-                                                weight={4}
-                                                dashArray="10, 10"
-                                                opacity={0.8}
-                                            >
-                                                <Popup>Remaining Route ({Math.round(distanceToEnd / 1000)} km)</Popup>
-                                            </Polyline>
-                                        );
-                                    }
-                                    return null;
-                                })()}
-
-                                {/* Original Planned Route (Start -> End) - Fainter */}
-                                <Polyline
-                                    positions={[
-                                        [activeTripPoints.start.lat, activeTripPoints.start.lng],
-                                        [activeTripPoints.end.lat, activeTripPoints.end.lng]
-                                    ]}
-                                    color="#94a3b8" // Gray
-                                    weight={2}
-                                    dashArray="5, 5"
-                                    opacity={0.4}
-                                >
-                                    <Popup>Original Planned Route</Popup>
-                                </Polyline>
-                            </>
+                        {/* Remaining Route (Blue Line that shrinks) */}
+                        {remainingRouteCoordinates.length > 1 && (
+                            <Polyline
+                                positions={remainingRouteCoordinates}
+                                color="#2563eb" // Blue for remaining
+                                weight={6}
+                                opacity={0.9}
+                            >
+                                <Popup>Remaining Route</Popup>
+                            </Polyline>
                         )}
                     </MapContainer>
                 </div>

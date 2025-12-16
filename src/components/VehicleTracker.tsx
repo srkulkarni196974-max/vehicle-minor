@@ -323,6 +323,13 @@ export default function VehicleTracker({ vehicleId, vehicleName, driverName, tri
 
     const activeTripPoints = tripPoints || internalTripPoints;
 
+    // Debug logging
+    useEffect(() => {
+        console.log('🎯 Active Trip Points:', activeTripPoints);
+        console.log('📍 Trip Points prop:', tripPoints);
+        console.log('📍 Internal Trip Points:', internalTripPoints);
+    }, [activeTripPoints, tripPoints, internalTripPoints]);
+
     const vehicleIcon = L.divIcon({
         className: 'custom-vehicle-icon',
         html: `<div style="background-color: white; border-radius: 50%; padding: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
@@ -518,7 +525,7 @@ export default function VehicleTracker({ vehicleId, vehicleName, driverName, tri
                         />
 
                         {/* Start Point Marker */}
-                        {activeTripPoints && (
+                        {activeTripPoints && activeTripPoints.start && (
                             <Marker position={[activeTripPoints.start.lat, activeTripPoints.start.lng]} icon={startIcon}>
                                 <Popup>
                                     <div className="text-center">
@@ -530,7 +537,7 @@ export default function VehicleTracker({ vehicleId, vehicleName, driverName, tri
                         )}
 
                         {/* End Point Marker */}
-                        {activeTripPoints && (
+                        {activeTripPoints && activeTripPoints.end && (
                             <Marker position={[activeTripPoints.end.lat, activeTripPoints.end.lng]} icon={endIcon}>
                                 <Popup>
                                     <div className="text-center">

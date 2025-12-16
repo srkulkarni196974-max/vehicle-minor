@@ -52,12 +52,13 @@ function MapController({ center, bounds }: { center: [number, number], bounds?: 
 interface VehicleTrackerProps {
     vehicleId: string;
     vehicleName: string;
+    driverName?: string;
     tripPoints?: TripPoints;
     historyPoints?: { lat: number; lng: number; timestamp: string }[];
     onSaveTrip?: (data: any) => void;
 }
 
-export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, historyPoints, onSaveTrip }: VehicleTrackerProps) {
+export default function VehicleTracker({ vehicleId, vehicleName, driverName, tripPoints, historyPoints, onSaveTrip }: VehicleTrackerProps) {
     const [currentLocation, setCurrentLocation] = useState<VehicleLocation>({
         lat: tripPoints?.start.lat || 18.5204, // Default to Trip Start or Pune
         lng: tripPoints?.start.lng || 73.8567,
@@ -268,13 +269,14 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, his
 
     const activeTripPoints = tripPoints || internalTripPoints;
 
-    const vehicleIcon = new L.Icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41],
+    const vehicleIcon = L.divIcon({
+        className: 'custom-vehicle-icon',
+        html: `<div style="background-color: white; border-radius: 50%; padding: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-car"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+               </div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20],
     });
 
     const startIcon = new L.Icon({
@@ -488,12 +490,20 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, his
                         {/* Vehicle Marker */}
                         <Marker position={[currentLocation.lat, currentLocation.lng]} icon={vehicleIcon}>
                             <Popup>
-                                <div className="text-center">
-                                    <p className="font-semibold">{vehicleName}</p>
-                                    <p className="text-sm text-gray-600">Speed: {currentLocation.speed} km/h</p>
-                                    <p className="text-xs text-gray-500">
-                                        {currentLocation.timestamp.toLocaleTimeString()}
-                                    </p>
+                                <div className="text-center p-2">
+                                    <p className="font-bold text-lg text-gray-900">{vehicleName}</p>
+                                    {driverName && (
+                                        <p className="text-sm font-medium text-blue-600 mt-1 flex items-center justify-center gap-1">
+                                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                            {driverName}
+                                        </p>
+                                    )}
+                                    <div className="mt-2 pt-2 border-t border-gray-100">
+                                        <p className="text-sm text-gray-600">Speed: <span className="font-mono font-semibold">{currentLocation.speed} km/h</span></p>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            {currentLocation.timestamp.toLocaleTimeString()}
+                                        </p>
+                                    </div>
                                 </div>
                             </Popup>
                         </Marker>
@@ -510,11 +520,11 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, his
                             </Polyline>
                         )}
 
-                        {/* Remaining Route (Blue Line that shrinks) */}
+                        {/* Remaining Route (Purple Line that shrinks) */}
                         {remainingRouteCoordinates.length > 1 && (
                             <Polyline
                                 positions={remainingRouteCoordinates.filter(pt => pt[0] !== 0 && pt[1] !== 0)}
-                                color="#2563eb" // Blue for remaining
+                                color="#7c3aed" // Purple for remaining
                                 weight={6}
                                 opacity={0.9}
                             >

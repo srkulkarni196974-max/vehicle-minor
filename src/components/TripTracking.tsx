@@ -791,6 +791,7 @@ export default function TripTracking() {
                 <VehicleTracker
                   vehicleId={viewingTripMap.vehicle_id}
                   vehicleName={vehicles.find(v => v.id === viewingTripMap.vehicle_id)?.vehicle_number || 'Vehicle'}
+                  driverName={viewingTripMap.driver_name}
                   historyPoints={tripHistory}
                   tripPoints={{
                     start: {

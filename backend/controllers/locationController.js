@@ -30,6 +30,18 @@ exports.updateLocation = async (req, res) => {
             await history.save();
         }
 
+        // 3. Emit Socket Event for Real-time Tracking
+        const io = req.app.get('io');
+        if (io) {
+            io.to(vehicleId).emit('location-update', {
+                vehicleId,
+                latitude: lat,
+                longitude: lng,
+                timestamp: Date.now(),
+                speed: 0 // You might want to pass speed from req.body if available
+            });
+        }
+
         res.json({ message: 'Location updated' });
     } catch (error) {
         res.status(500).json({ message: 'Server Error', error: error.message });

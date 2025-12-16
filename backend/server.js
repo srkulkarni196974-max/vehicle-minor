@@ -86,6 +86,9 @@ const io = new Server(server, {
     }
 });
 
+// Make io accessible to our router
+app.set('io', io);
+
 // Models
 const LiveLocation = require('./models/LiveLocation');
 const RouteHistory = require('./models/RouteHistory');

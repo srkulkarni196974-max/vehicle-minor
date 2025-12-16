@@ -106,6 +106,22 @@ export default function VehicleTracker({ vehicleId, vehicleName, driverName, tri
 
     // Update Remaining Route based on Current Location
     useEffect(() => {
+        const points = tripPoints || internalTripPoints;
+
+        // Always calculate route from current location to destination
+        if (points && points.end) {
+            const currentLatLng = L.latLng(currentLocation.lat, currentLocation.lng);
+            const endLatLng = L.latLng(points.end.lat, points.end.lng);
+            const distToEnd = currentLatLng.distanceTo(endLatLng);
+
+            // Only fetch route if we're more than 100m from destination
+            if (distToEnd > 100) {
+                // Fetch route from current location to destination
+                fetchRoute(currentLocation.lat, currentLocation.lng, points.end.lat, points.end.lng);
+            }
+        }
+
+        // If we have fullRouteCoordinates, update the remaining route
         if (fullRouteCoordinates.length === 0) return;
 
         const currentLatLng = L.latLng(currentLocation.lat, currentLocation.lng);
@@ -127,7 +143,6 @@ export default function VehicleTracker({ vehicleId, vehicleName, driverName, tri
         const remaining = fullRouteCoordinates.slice(closestIndex);
 
         // Check if we need to re-calculate (if remaining is empty/short but we are far from destination)
-        const points = tripPoints || internalTripPoints;
         if (points) {
             const endLatLng = L.latLng(points.end.lat, points.end.lng);
             const distToEnd = currentLatLng.distanceTo(endLatLng);

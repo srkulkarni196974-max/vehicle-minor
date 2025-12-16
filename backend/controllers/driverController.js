@@ -138,3 +138,33 @@ exports.getMyVehicle = async (req, res) => {
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
+
+// Delete driver
+exports.deleteDriver = async (req, res) => {
+    try {
+        const driver = await Driver.findById(req.params.id);
+        if (!driver) return res.status(404).json({ message: 'Driver not found' });
+
+        // Check ownership
+        if (req.user.role !== 'admin' && driver.ownerId.toString() !== req.user.id.toString()) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
+        // 1. Unassign vehicle if any
+        if (driver.assignedVehicle) {
+            const Vehicle = require('../models/Vehicle');
+            await Vehicle.findByIdAndUpdate(driver.assignedVehicle, { $unset: { currentDriver: "" } });
+        }
+
+        // 2. Delete the User account associated with the driver
+        await User.findByIdAndDelete(driver.userId);
+
+        // 3. Delete the Driver profile
+        await Driver.findByIdAndDelete(req.params.id);
+
+        res.json({ message: 'Driver deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting driver:', error);
+        res.status(500).json({ message: 'Server Error', error: error.message });
+    }
+};

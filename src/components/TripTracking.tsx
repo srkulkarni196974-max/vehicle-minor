@@ -72,17 +72,50 @@ export default function TripTracking() {
     }
   }, [user]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    let startLat = formData.start_location_lat;
+    let startLon = formData.start_location_lon;
+    let endLat = formData.end_location_lat;
+    let endLon = formData.end_location_lon;
+
+    // Geocode start location if coordinates are missing
+    if ((!startLat || !startLon) && formData.start_location) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.start_location)}&limit=1`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          startLat = data[0].lat;
+          startLon = data[0].lon;
+        }
+      } catch (err) {
+        console.error('Error geocoding start location:', err);
+      }
+    }
+
+    // Geocode end location if coordinates are missing
+    if ((!endLat || !endLon) && formData.end_location) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.end_location)}&limit=1`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          endLat = data[0].lat;
+          endLon = data[0].lon;
+        }
+      } catch (err) {
+        console.error('Error geocoding end location:', err);
+      }
+    }
 
     addTrip({
       ...formData,
       driver_id: user.id,
-      start_location_lat: formData.start_location_lat,
-      start_location_lon: formData.start_location_lon,
-      end_location_lat: formData.end_location_lat,
-      end_location_lon: formData.end_location_lon,
+      start_location_lat: startLat,
+      start_location_lon: startLon,
+      end_location_lat: endLat,
+      end_location_lon: endLon,
     });
 
     setShowAddModal(false);
@@ -107,15 +140,48 @@ export default function TripTracking() {
     e.preventDefault();
     if (!user || !editingTrip) return;
 
+    let startLat = formData.start_location_lat;
+    let startLon = formData.start_location_lon;
+    let endLat = formData.end_location_lat;
+    let endLon = formData.end_location_lon;
+
+    // Geocode start location if coordinates are missing
+    if ((!startLat || !startLon) && formData.start_location) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.start_location)}&limit=1`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          startLat = data[0].lat;
+          startLon = data[0].lon;
+        }
+      } catch (err) {
+        console.error('Error geocoding start location:', err);
+      }
+    }
+
+    // Geocode end location if coordinates are missing
+    if ((!endLat || !endLon) && formData.end_location) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.end_location)}&limit=1`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          endLat = data[0].lat;
+          endLon = data[0].lon;
+        }
+      } catch (err) {
+        console.error('Error geocoding end location:', err);
+      }
+    }
+
     try {
       await axios.put(`/trips/${editingTrip.id}`, {
         vehicleId: formData.vehicle_id,
         startLocation: formData.start_location,
-        startLocationLat: formData.start_location_lat,
-        startLocationLon: formData.start_location_lon,
+        startLocationLat: startLat,
+        startLocationLon: startLon,
         endLocation: formData.end_location,
-        endLocationLat: formData.end_location_lat,
-        endLocationLon: formData.end_location_lon,
+        endLocationLat: endLat,
+        endLocationLon: endLon,
         startMileage: formData.start_mileage,
         endMileage: formData.end_mileage,
         tripDate: formData.trip_date,

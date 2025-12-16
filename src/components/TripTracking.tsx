@@ -209,12 +209,12 @@ export default function TripTracking() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div>
-            <p className="text-gray-500">Start Mileage</p>
+            <p className="text-gray-500">Start KM Reading</p>
             <p className="font-medium text-gray-900">{trip.start_mileage.toLocaleString()} km</p>
           </div>
           <div>
-            <p className="text-gray-500">End Mileage</p>
-            <p className="font-medium text-gray-900">{trip.end_mileage.toLocaleString()} km</p>
+            <p className="text-gray-500">End KM Reading</p>
+            <p className="font-medium text-gray-900">{trip.end_mileage ? trip.end_mileage.toLocaleString() + ' km' : 'Ongoing'}</p>
           </div>
           {trip.fuel_consumed && (
             <div>
@@ -467,7 +467,7 @@ export default function TripTracking() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Mileage (km)
+                    Start KM Reading
                   </label>
                   <input
                     type="number"
@@ -481,11 +481,10 @@ export default function TripTracking() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Mileage (km)
+                    End KM Reading (Optional)
                   </label>
                   <input
                     type="number"
-                    required
                     min="0"
                     value={formData.end_mileage}
                     onChange={(e) => setFormData({ ...formData, end_mileage: parseInt(e.target.value) })}
@@ -638,7 +637,7 @@ export default function TripTracking() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Mileage (km)
+                    Start KM Reading
                   </label>
                   <input
                     type="number"
@@ -652,7 +651,7 @@ export default function TripTracking() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Mileage (km)
+                    End KM Reading
                   </label>
                   <input
                     type="number"

@@ -23,13 +23,14 @@ exports.createTrip = async (req, res) => {
             endLocationLat,
             endLocationLon,
             startMileage,
-            endMileage,
+            endMileage: endMileage || undefined,
             startTime: tripDate || Date.now(),
-            endTime: tripDate || Date.now(), // Assuming single day trip for manual entry
-            distance: endMileage - startMileage,
+            endTime: endMileage ? (tripDate || Date.now()) : undefined,
+            distance: endMileage ? (endMileage - startMileage) : 0,
             fuelConsumed,
+            efficiency: (endMileage && fuelConsumed) ? ((endMileage - startMileage) / fuelConsumed) : undefined,
             purpose,
-            status: 'Completed'
+            status: endMileage ? 'Completed' : 'Ongoing'
         });
 
         await trip.save();
@@ -148,10 +149,17 @@ exports.updateTrip = async (req, res) => {
         if (endMileage !== undefined) {
             trip.endMileage = endMileage;
             trip.distance = endMileage - trip.startMileage;
+            trip.status = 'Completed';
+            if (!trip.endTime) trip.endTime = Date.now();
         }
         if (tripDate) trip.startTime = tripDate;
         if (fuelConsumed !== undefined) trip.fuelConsumed = fuelConsumed;
         if (purpose) trip.purpose = purpose;
+
+        // Recalculate efficiency if distance or fuel changed
+        if (trip.distance && trip.fuelConsumed) {
+            trip.efficiency = trip.distance / trip.fuelConsumed;
+        }
 
         await trip.save();
         res.json({ message: 'Trip updated successfully', trip });

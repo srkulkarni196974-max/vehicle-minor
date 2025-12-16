@@ -15,6 +15,7 @@ const tripSchema = new mongoose.Schema({
     endMileage: { type: Number },
     distance: { type: Number, default: 0 }, // in km
     fuelConsumed: { type: Number },
+    efficiency: { type: Number }, // km/L
     purpose: { type: String },
     status: { type: String, enum: ['Ongoing', 'Completed'], default: 'Ongoing' }
 }, { timestamps: true });

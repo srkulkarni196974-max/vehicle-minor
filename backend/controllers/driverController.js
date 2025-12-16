@@ -31,6 +31,11 @@ exports.addDriver = async (req, res) => {
 
         // Only assign vehicle if a valid ID is provided (handle empty string)
         if (assignedVehicle && assignedVehicle.trim() !== '') {
+            // Check if vehicle is already assigned
+            const existingDriver = await Driver.findOne({ assignedVehicle: assignedVehicle });
+            if (existingDriver) {
+                return res.status(400).json({ message: 'Vehicle is already assigned to another driver' });
+            }
             driverData.assignedVehicle = assignedVehicle;
         }
 
@@ -63,6 +68,12 @@ exports.updateDriver = async (req, res) => {
 
         // Handle vehicle change
         if (assignedVehicle && assignedVehicle !== driver.assignedVehicle?.toString()) {
+            // Check if vehicle is already assigned
+            const existingDriver = await Driver.findOne({ assignedVehicle: assignedVehicle });
+            if (existingDriver && existingDriver._id.toString() !== req.params.id) {
+                return res.status(400).json({ message: 'Vehicle is already assigned to another driver' });
+            }
+
             const Vehicle = require('../models/Vehicle');
             // Clear old vehicle
             if (driver.assignedVehicle) {
@@ -109,6 +120,12 @@ exports.assignVehicle = async (req, res) => {
         // Check ownership
         if (req.user.role !== 'admin' && driver.ownerId.toString() !== req.user.id.toString()) {
             return res.status(403).json({ message: 'Access denied' });
+        }
+
+        // Check if vehicle is already assigned to another driver
+        const existingDriver = await Driver.findOne({ assignedVehicle: vehicleId });
+        if (existingDriver && existingDriver._id.toString() !== driverId) {
+            return res.status(400).json({ message: 'Vehicle is already assigned to another driver' });
         }
 
         driver.assignedVehicle = vehicleId;

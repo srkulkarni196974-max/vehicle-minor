@@ -43,7 +43,7 @@ exports.createTrip = async (req, res) => {
 // Start a new trip
 exports.startTrip = async (req, res) => {
     try {
-        const { vehicleId, startLocation, purpose } = req.body;
+        const { vehicleId, startLocation, startLocationLat, startLocationLon, purpose } = req.body;
 
         // Find driver profile for the logged-in user
         const driver = await Driver.findOne({ userId: req.user.id });
@@ -59,6 +59,8 @@ exports.startTrip = async (req, res) => {
             vehicleId,
             startTime: Date.now(),
             startLocation,
+            startLocationLat,
+            startLocationLon,
             purpose,
             status: 'Ongoing'
         });
@@ -78,7 +80,7 @@ exports.startTrip = async (req, res) => {
 // End trip
 exports.endTrip = async (req, res) => {
     try {
-        const { tripId, endLocation, distance } = req.body;
+        const { tripId, endLocation, endLocationLat, endLocationLon, distance } = req.body;
 
         const trip = await Trip.findById(tripId);
         if (!trip) return res.status(404).json({ message: 'Trip not found' });
@@ -86,6 +88,8 @@ exports.endTrip = async (req, res) => {
 
         trip.endTime = Date.now();
         trip.endLocation = endLocation;
+        trip.endLocationLat = endLocationLat;
+        trip.endLocationLon = endLocationLon;
         trip.distance = distance;
         trip.status = 'Completed';
         await trip.save();

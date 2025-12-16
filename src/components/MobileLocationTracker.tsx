@@ -17,6 +17,8 @@ export const MobileLocationTracker = () => {
     const [error, setError] = useState('');
     const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
     const [updateCount, setUpdateCount] = useState(0);
+    const [currentTripId, setCurrentTripId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
     const sendLocationToBackend = async (locationData: LocationData) => {
         try {
@@ -45,7 +47,7 @@ export const MobileLocationTracker = () => {
             setUpdateCount(prev => prev + 1);
         } catch (err: any) {
             console.error('Error sending location:', err);
-            setError(`Failed to update location: ${err.response?.data?.message || err.message}`);
+            // Don't show error to user for every failed update to avoid spam
         }
     };
 
@@ -110,13 +112,108 @@ export const MobileLocationTracker = () => {
         };
     }, [isTracking]);
 
-    const toggleTracking = () => {
-        if (!isTracking) {
-            // Reset error when starting
-            setError('');
-            setUpdateCount(0);
+    const startTrip = async () => {
+        if (!location) {
+            setError('Waiting for GPS location...');
+            return;
         }
-        setIsTracking(!isTracking);
+
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const vehicleId = localStorage.getItem('assignedVehicleId');
+
+            if (!vehicleId) {
+                throw new Error('No vehicle assigned');
+            }
+
+            const response = await axios.post(
+                `${API_URL}/api/trips/start`,
+                {
+                    vehicleId,
+                    startLocation: `Lat: ${location.latitude.toFixed(4)}, Lng: ${location.longitude.toFixed(4)}`,
+                    startLocationLat: location.latitude,
+                    startLocationLon: location.longitude,
+                    purpose: 'Mobile Trip'
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            setCurrentTripId(response.data.trip._id);
+            setIsTracking(true);
+            setError('');
+        } catch (err: any) {
+            console.error('Error starting trip:', err);
+            setError(err.response?.data?.message || 'Failed to start trip');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const endTrip = async () => {
+        if (!currentTripId || !location) {
+            setIsTracking(false);
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+
+            await axios.post(
+                `${API_URL}/api/trips/end`,
+                {
+                    tripId: currentTripId,
+                    endLocation: `Lat: ${location.latitude.toFixed(4)}, Lng: ${location.longitude.toFixed(4)}`,
+                    endLocationLat: location.latitude,
+                    endLocationLon: location.longitude,
+                    distance: 0 // Calculate distance if needed
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            setCurrentTripId(null);
+            setIsTracking(false);
+            setUpdateCount(0);
+        } catch (err: any) {
+            console.error('Error ending trip:', err);
+            setError(err.response?.data?.message || 'Failed to end trip');
+            // Force stop tracking even if API fails
+            setIsTracking(false);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleTracking = () => {
+        if (isTracking) {
+            endTrip();
+        } else {
+            // If we don't have location yet, try to get it once before starting
+            if (!location) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const locationData: LocationData = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            timestamp: new Date(),
+                            accuracy: position.coords.accuracy,
+                            speed: position.coords.speed || undefined
+                        };
+                        setLocation(locationData);
+                        // Now start trip with this location
+                        // We need to call startTrip logic here, but since startTrip uses 'location' state 
+                        // which might not update immediately in this closure, we'll just set tracking to true 
+                        // and let the user click again or handle it better. 
+                        // Actually, let's just set error and ask them to wait.
+                    },
+                    (err) => setError('Please enable GPS to start tracking')
+                );
+                setError('Getting GPS location... Click start again in a moment.');
+                return;
+            }
+            startTrip();
+        }
     };
 
     return (
@@ -136,8 +233,8 @@ export const MobileLocationTracker = () => {
                 {/* Status Card */}
                 <div className="bg-white shadow-lg p-6">
                     <div className={`flex items-center justify-center p-4 rounded-lg mb-4 ${isTracking
-                            ? 'bg-green-100 border-2 border-green-500'
-                            : 'bg-gray-100 border-2 border-gray-300'
+                        ? 'bg-green-100 border-2 border-green-500'
+                        : 'bg-gray-100 border-2 border-gray-300'
                         }`}>
                         <div className="text-center">
                             <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-2 ${isTracking ? 'bg-green-500' : 'bg-gray-400'
@@ -163,12 +260,13 @@ export const MobileLocationTracker = () => {
                     {/* Control Button */}
                     <button
                         onClick={toggleTracking}
+                        disabled={loading}
                         className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all transform hover:scale-105 active:scale-95 shadow-lg ${isTracking
-                                ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white'
-                                : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white'
-                            }`}
+                            ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white'
+                            : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white'
+                            } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {isTracking ? '🛑 Stop Tracking' : '▶️ Start Tracking'}
+                        {loading ? 'Processing...' : (isTracking ? '🛑 Stop Tracking' : '▶️ Start Tracking')}
                     </button>
                 </div>
 

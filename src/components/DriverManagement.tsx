@@ -40,7 +40,6 @@ export default function DriverManagement() {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        password: '',
         licenseNumber: '',
         assignedVehicle: '',
         status: 'Available' as 'Available' | 'On Trip' | 'Inactive',
@@ -130,7 +129,6 @@ export default function DriverManagement() {
         setFormData({
             name: '',
             email: '',
-            password: '',
             licenseNumber: '',
             assignedVehicle: '',
             status: 'Available',
@@ -143,7 +141,6 @@ export default function DriverManagement() {
         setFormData({
             name: driver.userId.name,
             email: driver.userId.email,
-            password: '',
             licenseNumber: driver.licenseNumber,
             assignedVehicle: driver.assignedVehicle?._id || '',
             status: driver.status,
@@ -397,20 +394,6 @@ export default function DriverManagement() {
                                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                             placeholder="driver@example.com"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Password *
-                                        </label>
-                                        <input
-                                            type="password"
-                                            required
-                                            value={formData.password}
-                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                            placeholder="Enter password"
                                         />
                                     </div>
                                 </>

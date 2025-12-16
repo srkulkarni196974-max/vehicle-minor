@@ -5,13 +5,15 @@ const User = require('../models/User');
 // Add a new driver
 exports.addDriver = async (req, res) => {
     try {
-        const { name, email, password, licenseNumber, assignedVehicle, status } = req.body;
+        const { name, email, licenseNumber, assignedVehicle, status } = req.body;
 
         // 1. Create User account for driver
         let user = await User.findOne({ email });
         if (user) return res.status(400).json({ message: 'User with this email already exists' });
 
-        const hashedPassword = await require('bcryptjs').hash(password, 10);
+        // Generate a default password
+        const defaultPassword = 'password123';
+        const hashedPassword = await require('bcryptjs').hash(defaultPassword, 10);
         user = new User({
             name,
             email,

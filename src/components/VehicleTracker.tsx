@@ -99,66 +99,51 @@ export default function VehicleTracker({ vehicleId, vehicleName, driverName, tri
     // Initial Route Fetch
     useEffect(() => {
         const points = tripPoints || internalTripPoints;
-        if (points) {
-            fetchRoute(points.start.lat, points.start.lng, points.end.lat, points.end.lng);
+        if (points && points.end) {
+            // Reset rate limit for initial fetch
+            lastRouteFetchTime.current = 0;
+            console.log('Fetching initial route from current location to destination...');
+            fetchRoute(currentLocation.lat, currentLocation.lng, points.end.lat, points.end.lng);
         }
-    }, [tripPoints, internalTripPoints]);
+    }, [tripPoints?.end?.lat, tripPoints?.end?.lng, internalTripPoints?.end?.lat]);
 
     // Update Remaining Route based on Current Location
     useEffect(() => {
-        const points = tripPoints || internalTripPoints;
+        // If we have fullRouteCoordinates, update the remaining route
+        if (fullRouteCoordinates.length > 0) {
+            const currentLatLng = L.latLng(currentLocation.lat, currentLocation.lng);
 
-        // Always calculate route from current location to destination
+            // Find the closest point on the route to the current location
+            let minDistance = Infinity;
+            let closestIndex = 0;
+
+            for (let i = 0; i < fullRouteCoordinates.length; i++) {
+                const point = L.latLng(fullRouteCoordinates[i][0], fullRouteCoordinates[i][1]);
+                const distance = currentLatLng.distanceTo(point);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestIndex = i;
+                }
+            }
+
+            // Slice the route from the closest point to the end
+            const remaining = fullRouteCoordinates.slice(closestIndex);
+
+            // Add current location as the first point to make it smooth
+            setRemainingRouteCoordinates([[currentLocation.lat, currentLocation.lng], ...remaining]);
+        }
+
+        // Check if we need to re-calculate (if off-route)
+        const points = tripPoints || internalTripPoints;
         if (points && points.end) {
             const currentLatLng = L.latLng(currentLocation.lat, currentLocation.lng);
             const endLatLng = L.latLng(points.end.lat, points.end.lng);
             const distToEnd = currentLatLng.distanceTo(endLatLng);
 
-            // Only fetch route if we're more than 100m from destination
-            if (distToEnd > 100) {
-                // Fetch route from current location to destination
+            // If we have no route yet, or we are far from destination but route is empty
+            if (fullRouteCoordinates.length === 0 && distToEnd > 500) {
                 fetchRoute(currentLocation.lat, currentLocation.lng, points.end.lat, points.end.lng);
             }
-        }
-
-        // If we have fullRouteCoordinates, update the remaining route
-        if (fullRouteCoordinates.length === 0) return;
-
-        const currentLatLng = L.latLng(currentLocation.lat, currentLocation.lng);
-
-        // Find the closest point on the route to the current location
-        let minDistance = Infinity;
-        let closestIndex = 0;
-
-        for (let i = 0; i < fullRouteCoordinates.length; i++) {
-            const point = L.latLng(fullRouteCoordinates[i][0], fullRouteCoordinates[i][1]);
-            const distance = currentLatLng.distanceTo(point);
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestIndex = i;
-            }
-        }
-
-        // Slice the route from the closest point to the end
-        const remaining = fullRouteCoordinates.slice(closestIndex);
-
-        // Check if we need to re-calculate (if remaining is empty/short but we are far from destination)
-        if (points) {
-            const endLatLng = L.latLng(points.end.lat, points.end.lng);
-            const distToEnd = currentLatLng.distanceTo(endLatLng);
-
-            // Only recalculate if:
-            // 1. Remaining route is very short (< 5 points)
-            // 2. We are still far from destination (> 1000m)
-            // 3. We are far from the route (minDistance > 200m) - meaning we went off-route
-            if (remaining.length < 5 && distToEnd > 1000 && minDistance > 200) {
-                console.log('Recalculating route from current location...');
-                fetchRoute(currentLocation.lat, currentLocation.lng, points.end.lat, points.end.lng);
-            } else {
-                setRemainingRouteCoordinates([[currentLocation.lat, currentLocation.lng], ...remaining]);
-            }
-        } else {
-            setRemainingRouteCoordinates([[currentLocation.lat, currentLocation.lng], ...remaining]);
         }
 
     }, [currentLocation, fullRouteCoordinates, tripPoints, internalTripPoints]);

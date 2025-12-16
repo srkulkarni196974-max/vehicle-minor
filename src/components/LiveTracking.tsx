@@ -53,12 +53,18 @@ export default function LiveTracking() {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            // Find ongoing trip for this vehicle
-            const trip = response.data.find((t: any) =>
-                (t.vehicleId._id === vehicleId || t.vehicleId === vehicleId) &&
-                t.status === 'Ongoing'
-            );
+            console.log('All trips:', response.data);
+            console.log('Looking for vehicle:', vehicleId);
 
+            // Find ongoing trip for this vehicle
+            const trip = response.data.find((t: any) => {
+                const tVehicleId = t.vehicleId?._id || t.vehicleId;
+                const statusMatch = t.status?.toLowerCase() === 'ongoing';
+                const idMatch = tVehicleId === vehicleId;
+                return idMatch && statusMatch;
+            });
+
+            console.log('Found trip:', trip);
             setActiveTrip(trip || null);
         } catch (error) {
             console.error('Error fetching active trip:', error);

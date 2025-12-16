@@ -61,12 +61,22 @@ export default function LiveTracking() {
                 const tVehicleId = t.vehicleId?._id || t.vehicleId;
                 return String(tVehicleId) === String(vehicleId);
             });
+
+            // Sort by date descending (newest first)
+            vehicleTrips.sort((a: any, b: any) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
             setDebugTrips(vehicleTrips);
 
-            // Find ongoing trip for this vehicle
-            const trip = vehicleTrips.find((t: any) => t.status === 'Ongoing');
+            // 1. Try to find an Ongoing trip
+            let trip = vehicleTrips.find((t: any) => t.status === 'Ongoing');
 
-            console.log('Found trip:', trip);
+            // 2. If no Ongoing trip, fallback to the most recent trip (Completed)
+            if (!trip && vehicleTrips.length > 0) {
+                trip = vehicleTrips[0];
+                console.log('No ongoing trip found, falling back to latest trip:', trip);
+            }
+
+            console.log('Selected trip:', trip);
             setActiveTrip(trip || null);
         } catch (error) {
             console.error('Error fetching active trip:', error);
@@ -137,16 +147,28 @@ export default function LiveTracking() {
 
         return (
             <div className="space-y-4">
-                <button
-                    onClick={() => {
-                        setSelectedVehicle(null);
-                        setActiveTrip(null);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
-                >
-                    <X className="h-4 w-4" />
-                    Back to Vehicles
-                </button>
+                <div className="flex items-center justify-between">
+                    <button
+                        onClick={() => {
+                            setSelectedVehicle(null);
+                            setActiveTrip(null);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                    >
+                        <X className="h-4 w-4" />
+                        Back to Vehicles
+                    </button>
+
+                    {activeTrip && (
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${activeTrip.status === 'Ongoing'
+                                ? 'bg-green-100 text-green-800 animate-pulse'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                            {activeTrip.status === 'Ongoing' ? '● Live Trip' : '● Last Trip (Completed)'}
+                        </span>
+                    )}
+                </div>
+
                 <VehicleTracker
                     vehicleId={selectedVehicle._id}
                     vehicleName={`${selectedVehicle.registrationNumber} - ${selectedVehicle.make || ''} ${selectedVehicle.model || ''}`}

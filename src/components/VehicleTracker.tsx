@@ -132,9 +132,11 @@ export default function VehicleTracker({ vehicleId, vehicleName, driverName, tri
             const endLatLng = L.latLng(points.end.lat, points.end.lng);
             const distToEnd = currentLatLng.distanceTo(endLatLng);
 
-            // If remaining route is empty or very short (< 2 points), but we are still far (> 500m) from destination
-            // It means we probably went off route or the slice logic failed. Re-fetch from current location.
-            if (remaining.length < 2 && distToEnd > 500) {
+            // Only recalculate if:
+            // 1. Remaining route is very short (< 5 points)
+            // 2. We are still far from destination (> 1000m)
+            // 3. We are far from the route (minDistance > 200m) - meaning we went off-route
+            if (remaining.length < 5 && distToEnd > 1000 && minDistance > 200) {
                 console.log('Recalculating route from current location...');
                 fetchRoute(currentLocation.lat, currentLocation.lng, points.end.lat, points.end.lng);
             } else {

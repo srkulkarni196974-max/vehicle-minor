@@ -89,13 +89,19 @@ export default function DriverLocationService() {
         if (!isTracking) return;
 
         console.log('🚗 Starting location tracking...');
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 3;
+
         const watchId = navigator.geolocation.watchPosition(
             async (position) => {
                 const vehicleId = localStorage.getItem('assignedVehicleId');
                 const token = localStorage.getItem('token');
 
                 if (!vehicleId || !token) {
-                    setError('No vehicle assigned');
+                    consecutiveErrors++;
+                    if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                        setError('No vehicle assigned');
+                    }
                     return;
                 }
 
@@ -113,18 +119,26 @@ export default function DriverLocationService() {
                         }
                     );
 
+                    consecutiveErrors = 0; // Reset on success
                     setLastUpdate(new Date());
                     setUpdateCount(prev => prev + 1);
-                    setError('');
+                    setError(''); // Clear any previous errors
                     console.log('📡 Location updated successfully');
                 } catch (err: any) {
                     console.error('❌ Location update failed:', err);
-                    setError(err.response?.data?.message || 'Update failed');
+                    consecutiveErrors++;
+                    // Only show error if we have multiple consecutive failures
+                    if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                        setError(err.response?.data?.message || 'Update failed');
+                    }
                 }
             },
             (err) => {
                 console.error('❌ Geolocation error:', err);
-                setError(`Location error: ${err.message}`);
+                consecutiveErrors++;
+                if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                    setError(`Location error: ${err.message}`);
+                }
             },
             {
                 enableHighAccuracy: true,

@@ -140,36 +140,57 @@ export default function TripTracking() {
     e.preventDefault();
     if (!user || !editingTrip) return;
 
+    // Show loading state
+    const submitBtn = document.getElementById('edit-trip-submit-btn');
+    if (submitBtn) submitBtn.innerHTML = 'Fixing Route & Updating...';
+
     let startLat = formData.start_location_lat;
     let startLon = formData.start_location_lon;
     let endLat = formData.end_location_lat;
     let endLon = formData.end_location_lon;
 
+    const geocode = async (query: string) => {
+      try {
+        // Try full query first
+        let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+        let data = await res.json();
+
+        // If no results, try just the first part (e.g. city name)
+        if (!data || data.length === 0) {
+          const simpleQuery = query.split(',')[0];
+          if (simpleQuery && simpleQuery !== query) {
+            console.log('Retrying geocode with:', simpleQuery);
+            res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(simpleQuery)}&limit=1`);
+            data = await res.json();
+          }
+        }
+
+        return data && data.length > 0 ? { lat: data[0].lat, lon: data[0].lon } : null;
+      } catch (err) {
+        console.error('Geocoding error:', err);
+        return null;
+      }
+    };
+
     // Geocode start location if coordinates are missing
     if ((!startLat || !startLon) && formData.start_location) {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.start_location)}&limit=1`);
-        const data = await res.json();
-        if (data && data.length > 0) {
-          startLat = data[0].lat;
-          startLon = data[0].lon;
-        }
-      } catch (err) {
-        console.error('Error geocoding start location:', err);
+      const coords = await geocode(formData.start_location);
+      if (coords) {
+        startLat = coords.lat;
+        startLon = coords.lon;
+      } else {
+        alert(`Could not find coordinates for "${formData.start_location}". Please select a valid location from the dropdown.`);
       }
     }
 
     // Geocode end location if coordinates are missing
     if ((!endLat || !endLon) && formData.end_location) {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.end_location)}&limit=1`);
-        const data = await res.json();
-        if (data && data.length > 0) {
-          endLat = data[0].lat;
-          endLon = data[0].lon;
-        }
-      } catch (err) {
-        console.error('Error geocoding end location:', err);
+      const coords = await geocode(formData.end_location);
+      if (coords) {
+        endLat = coords.lat;
+        endLon = coords.lon;
+      } else {
+        alert(`Could not find coordinates for "${formData.end_location}". Please select a valid location from the dropdown.`);
       }
     }
 
@@ -193,6 +214,8 @@ export default function TripTracking() {
       window.location.reload();
     } catch (error) {
       console.error('Error updating trip:', error);
+      alert('Failed to update trip. Please try again.');
+      if (submitBtn) submitBtn.innerHTML = 'Update Trip';
     }
 
     setShowEditModal(false);

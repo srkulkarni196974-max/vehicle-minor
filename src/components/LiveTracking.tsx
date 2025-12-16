@@ -131,16 +131,21 @@ export default function LiveTracking() {
     }
 
     if (selectedVehicle) {
-        // Prepare trip points if active trip exists
-        const tripPoints = activeTrip ? {
+        // Check if active trip has valid coordinates
+        const hasCoordinates = activeTrip &&
+            activeTrip.startLocationLat && activeTrip.startLocationLon &&
+            activeTrip.endLocationLat && activeTrip.endLocationLon;
+
+        // Prepare trip points if active trip exists and has coordinates
+        const tripPoints = hasCoordinates ? {
             start: {
-                lat: parseFloat(activeTrip.startLocationLat) || 0,
-                lng: parseFloat(activeTrip.startLocationLon) || 0,
+                lat: parseFloat(activeTrip.startLocationLat),
+                lng: parseFloat(activeTrip.startLocationLon),
                 label: activeTrip.startLocation || 'Start'
             },
             end: {
-                lat: parseFloat(activeTrip.endLocationLat) || 0,
-                lng: parseFloat(activeTrip.endLocationLon) || 0,
+                lat: parseFloat(activeTrip.endLocationLat),
+                lng: parseFloat(activeTrip.endLocationLon),
                 label: activeTrip.endLocation || 'Destination'
             }
         } : undefined;
@@ -160,12 +165,19 @@ export default function LiveTracking() {
                     </button>
 
                     {activeTrip && (
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${activeTrip.status === 'Ongoing'
-                                ? 'bg-green-100 text-green-800 animate-pulse'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                            {activeTrip.status === 'Ongoing' ? '● Live Trip' : '● Last Trip (Completed)'}
-                        </span>
+                        <div className="flex flex-col items-end">
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${activeTrip.status === 'Ongoing'
+                                    ? 'bg-green-100 text-green-800 animate-pulse'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                {activeTrip.status === 'Ongoing' ? '● Live Trip' : '● Last Trip (Completed)'}
+                            </span>
+                            {!hasCoordinates && (
+                                <span className="text-xs text-red-500 mt-1 font-semibold">
+                                    ⚠ No route data available for this trip
+                                </span>
+                            )}
+                        </div>
                     )}
                 </div>
 
@@ -181,6 +193,7 @@ export default function LiveTracking() {
                     <p className="font-bold mb-2">Debug Info (For Developer):</p>
                     <p>Selected Vehicle ID: {selectedVehicle._id}</p>
                     <p>Active Trip Found: {activeTrip ? 'Yes' : 'No'}</p>
+                    <p>Has Coordinates: {hasCoordinates ? 'Yes' : 'No'}</p>
                     <p>Total Trips for Vehicle: {debugTrips.length}</p>
 
                     {debugTrips.length > 0 && (
@@ -189,7 +202,7 @@ export default function LiveTracking() {
                             <ul className="list-disc pl-4">
                                 {debugTrips.map((t, i) => (
                                     <li key={i}>
-                                        ID: {t._id} | Status: {t.status} | Start: {t.startLocation}
+                                        ID: {t._id} | Status: {t.status} | Start: {t.startLocation} | Coords: {t.startLocationLat ? 'Yes' : 'No'}
                                     </li>
                                 ))}
                             </ul>

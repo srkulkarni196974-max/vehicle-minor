@@ -566,7 +566,7 @@ export default function VehicleTracker({ vehicleId, vehicleName, driverName, tri
                         {locationHistory.length > 1 && (
                             <Polyline
                                 positions={locationHistory.filter(pt => pt[0] !== 0 && pt[1] !== 0)}
-                                color="#94a3b8" // Gray for history
+                                color="#7c3aed" // Purple for history
                                 weight={4}
                                 opacity={0.5}
                             >

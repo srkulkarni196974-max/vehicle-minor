@@ -30,6 +30,7 @@ export default function LiveTracking() {
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
     const [activeTrip, setActiveTrip] = useState<any>(null);
+    const [debugTrips, setDebugTrips] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -54,22 +55,23 @@ export default function LiveTracking() {
             });
 
             console.log('All trips:', response.data);
-            console.log('Looking for vehicle:', vehicleId);
+
+            // Debug: Store all trips for this vehicle
+            const vehicleTrips = response.data.filter((t: any) => {
+                const tVehicleId = t.vehicleId?._id || t.vehicleId;
+                return String(tVehicleId) === String(vehicleId);
+            });
+            setDebugTrips(vehicleTrips);
 
             // Find ongoing trip for this vehicle
-            const trip = response.data.find((t: any) => {
-                const tVehicleId = t.vehicleId?._id || t.vehicleId;
-                // Robust comparison
-                const idMatch = String(tVehicleId) === String(vehicleId);
-                const statusMatch = t.status === 'Ongoing';
-                return idMatch && statusMatch;
-            });
+            const trip = vehicleTrips.find((t: any) => t.status === 'Ongoing');
 
             console.log('Found trip:', trip);
             setActiveTrip(trip || null);
         } catch (error) {
             console.error('Error fetching active trip:', error);
             setActiveTrip(null);
+            setDebugTrips([]);
         }
     };
 
@@ -157,17 +159,24 @@ export default function LiveTracking() {
                     <p className="font-bold mb-2">Debug Info (For Developer):</p>
                     <p>Selected Vehicle ID: {selectedVehicle._id}</p>
                     <p>Active Trip Found: {activeTrip ? 'Yes' : 'No'}</p>
-                    {activeTrip && (
-                        <>
-                            <p>Trip ID: {activeTrip._id}</p>
-                            <p>Status: {activeTrip.status}</p>
-                            <p>Start: {activeTrip.startLocationLat}, {activeTrip.startLocationLon}</p>
-                            <p>End: {activeTrip.endLocationLat}, {activeTrip.endLocationLon}</p>
-                        </>
+                    <p>Total Trips for Vehicle: {debugTrips.length}</p>
+
+                    {debugTrips.length > 0 && (
+                        <div className="mt-2">
+                            <p className="font-semibold">Vehicle Trips Summary:</p>
+                            <ul className="list-disc pl-4">
+                                {debugTrips.map((t, i) => (
+                                    <li key={i}>
+                                        ID: {t._id} | Status: {t.status} | Start: {t.startLocation}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     )}
-                    <details>
-                        <summary className="cursor-pointer text-blue-600">Full Trip Data</summary>
-                        <pre>{JSON.stringify(activeTrip, null, 2)}</pre>
+
+                    <details className="mt-2">
+                        <summary className="cursor-pointer text-blue-600">Full Debug Data</summary>
+                        <pre>{JSON.stringify(debugTrips, null, 2)}</pre>
                     </details>
                 </div>
             </div>

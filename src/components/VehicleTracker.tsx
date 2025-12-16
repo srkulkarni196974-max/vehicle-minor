@@ -30,14 +30,21 @@ interface TripPoints {
 // Component to auto-center map
 function MapController({ center, bounds }: { center: [number, number], bounds?: L.LatLngBoundsExpression }) {
     const map = useMap();
+    const [hasFitted, setHasFitted] = useState(false);
 
     useEffect(() => {
-        if (bounds) {
+        if (bounds && !hasFitted) {
             map.fitBounds(bounds, { padding: [50, 50] });
-        } else {
-            map.setView(center, 15);
+            setHasFitted(true);
         }
-    }, [center, bounds, map]);
+    }, [bounds, hasFitted, map]);
+
+    // Optional: Smoothly pan to vehicle if it moves, but don't change zoom
+    useEffect(() => {
+        if (center[0] !== 0 && center[1] !== 0) {
+            map.flyTo(center, map.getZoom());
+        }
+    }, [center[0], center[1], map]);
 
     return null;
 }
@@ -494,7 +501,7 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, his
                         {/* Route History (Traveled Path) */}
                         {locationHistory.length > 1 && (
                             <Polyline
-                                positions={locationHistory}
+                                positions={locationHistory.filter(pt => pt[0] !== 0 && pt[1] !== 0)}
                                 color="#94a3b8" // Gray for history
                                 weight={4}
                                 opacity={0.5}
@@ -506,7 +513,7 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, his
                         {/* Remaining Route (Blue Line that shrinks) */}
                         {remainingRouteCoordinates.length > 1 && (
                             <Polyline
-                                positions={remainingRouteCoordinates}
+                                positions={remainingRouteCoordinates.filter(pt => pt[0] !== 0 && pt[1] !== 0)}
                                 color="#2563eb" // Blue for remaining
                                 weight={6}
                                 opacity={0.9}

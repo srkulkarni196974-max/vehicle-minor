@@ -59,8 +59,9 @@ export default function LiveTracking() {
             // Find ongoing trip for this vehicle
             const trip = response.data.find((t: any) => {
                 const tVehicleId = t.vehicleId?._id || t.vehicleId;
-                const statusMatch = t.status?.toLowerCase() === 'ongoing';
-                const idMatch = tVehicleId === vehicleId;
+                // Robust comparison
+                const idMatch = String(tVehicleId) === String(vehicleId);
+                const statusMatch = t.status === 'Ongoing';
                 return idMatch && statusMatch;
             });
 
@@ -150,6 +151,25 @@ export default function LiveTracking() {
                     driverName={selectedVehicle.currentDriver?.userId?.name}
                     tripPoints={tripPoints}
                 />
+
+                {/* Debug Info */}
+                <div className="mt-8 p-4 bg-gray-100 rounded text-xs font-mono overflow-auto max-h-60 border border-gray-300">
+                    <p className="font-bold mb-2">Debug Info (For Developer):</p>
+                    <p>Selected Vehicle ID: {selectedVehicle._id}</p>
+                    <p>Active Trip Found: {activeTrip ? 'Yes' : 'No'}</p>
+                    {activeTrip && (
+                        <>
+                            <p>Trip ID: {activeTrip._id}</p>
+                            <p>Status: {activeTrip.status}</p>
+                            <p>Start: {activeTrip.startLocationLat}, {activeTrip.startLocationLon}</p>
+                            <p>End: {activeTrip.endLocationLat}, {activeTrip.endLocationLon}</p>
+                        </>
+                    )}
+                    <details>
+                        <summary className="cursor-pointer text-blue-600">Full Trip Data</summary>
+                        <pre>{JSON.stringify(activeTrip, null, 2)}</pre>
+                    </details>
+                </div>
             </div>
         );
     }

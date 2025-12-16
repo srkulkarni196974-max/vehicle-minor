@@ -29,6 +29,7 @@ interface Vehicle {
 export default function LiveTracking() {
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+    const [activeTrip, setActiveTrip] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -37,6 +38,33 @@ export default function LiveTracking() {
         const interval = setInterval(fetchVehicles, 30000);
         return () => clearInterval(interval);
     }, []);
+
+    // Fetch active trip when vehicle is selected
+    useEffect(() => {
+        if (selectedVehicle) {
+            fetchActiveTrip(selectedVehicle._id);
+        }
+    }, [selectedVehicle]);
+
+    const fetchActiveTrip = async (vehicleId: string) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_URL}/api/trips`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            // Find ongoing trip for this vehicle
+            const trip = response.data.find((t: any) =>
+                (t.vehicleId._id === vehicleId || t.vehicleId === vehicleId) &&
+                t.status === 'Ongoing'
+            );
+
+            setActiveTrip(trip || null);
+        } catch (error) {
+            console.error('Error fetching active trip:', error);
+            setActiveTrip(null);
+        }
+    };
 
     const fetchVehicles = async () => {
         try {
@@ -84,10 +112,27 @@ export default function LiveTracking() {
     }
 
     if (selectedVehicle) {
+        // Prepare trip points if active trip exists
+        const tripPoints = activeTrip ? {
+            start: {
+                lat: parseFloat(activeTrip.startLocationLat) || 0,
+                lng: parseFloat(activeTrip.startLocationLon) || 0,
+                label: activeTrip.startLocation || 'Start'
+            },
+            end: {
+                lat: parseFloat(activeTrip.endLocationLat) || 0,
+                lng: parseFloat(activeTrip.endLocationLon) || 0,
+                label: activeTrip.endLocation || 'Destination'
+            }
+        } : undefined;
+
         return (
             <div className="space-y-4">
                 <button
-                    onClick={() => setSelectedVehicle(null)}
+                    onClick={() => {
+                        setSelectedVehicle(null);
+                        setActiveTrip(null);
+                    }}
                     className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
                 >
                     <X className="h-4 w-4" />
@@ -96,6 +141,8 @@ export default function LiveTracking() {
                 <VehicleTracker
                     vehicleId={selectedVehicle._id}
                     vehicleName={`${selectedVehicle.registrationNumber} - ${selectedVehicle.make || ''} ${selectedVehicle.model || ''}`}
+                    driverName={selectedVehicle.currentDriver?.userId?.name}
+                    tripPoints={tripPoints}
                 />
             </div>
         );

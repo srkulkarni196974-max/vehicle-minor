@@ -70,43 +70,49 @@ export default function VehicleTracker({ vehicleId, vehicleName, driverName, tri
     const [isConnected, setIsConnected] = useState(false);
     const [fullRouteCoordinates, setFullRouteCoordinates] = useState<[number, number][]>([]);
     const [remainingRouteCoordinates, setRemainingRouteCoordinates] = useState<[number, number][]>([]);
+    const lastRouteFetchTime = useRef<number>(0);
     const socketRef = useRef<Socket | null>(null);
 
     // Fetch Route from OSRM
-    useEffect(() => {
-        const fetchRoute = async () => {
-            const points = tripPoints || internalTripPoints;
-            if (!points) return;
+    const fetchRoute = async (startLat: number, startLng: number, endLat: number, endLng: number) => {
+        // Rate limit: Don't fetch more than once every 10 seconds
+        if (Date.now() - lastRouteFetchTime.current < 10000) return;
+        lastRouteFetchTime.current = Date.now();
 
-            try {
-                // OSRM expects {lon},{lat}
-                const start = `${points.start.lng},${points.start.lat}`;
-                const end = `${points.end.lng},${points.end.lat}`;
-                const url = `https://router.project-osrm.org/route/v1/driving/${start};${end}?overview=full&geometries=geojson`;
+        try {
+            // OSRM expects {lon},{lat}
+            const start = `${startLng},${startLat}`;
+            const end = `${endLng},${endLat}`;
+            const url = `https://router.project-osrm.org/route/v1/driving/${start};${end}?overview=full&geometries=geojson`;
 
-                const response = await axios.get(url);
-                if (response.data.routes && response.data.routes.length > 0) {
-                    const coordinates = response.data.routes[0].geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]] as [number, number]);
-                    setFullRouteCoordinates(coordinates);
-                    setRemainingRouteCoordinates(coordinates);
-                }
-            } catch (error) {
-                console.error('Error fetching route:', error);
+            const response = await axios.get(url);
+            if (response.data.routes && response.data.routes.length > 0) {
+                const coordinates = response.data.routes[0].geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]] as [number, number]);
+                setFullRouteCoordinates(coordinates);
+                // We don't set remaining immediately here, let the effect handle it
             }
-        };
+        } catch (error) {
+            console.error('Error fetching route:', error);
+        }
+    };
 
-        fetchRoute();
+    // Initial Route Fetch
+    useEffect(() => {
+        const points = tripPoints || internalTripPoints;
+        if (points) {
+            fetchRoute(points.start.lat, points.start.lng, points.end.lat, points.end.lng);
+        }
     }, [tripPoints, internalTripPoints]);
 
     // Update Remaining Route based on Current Location
     useEffect(() => {
         if (fullRouteCoordinates.length === 0) return;
 
+        const currentLatLng = L.latLng(currentLocation.lat, currentLocation.lng);
+
         // Find the closest point on the route to the current location
         let minDistance = Infinity;
         let closestIndex = 0;
-
-        const currentLatLng = L.latLng(currentLocation.lat, currentLocation.lng);
 
         for (let i = 0; i < fullRouteCoordinates.length; i++) {
             const point = L.latLng(fullRouteCoordinates[i][0], fullRouteCoordinates[i][1]);
@@ -118,11 +124,57 @@ export default function VehicleTracker({ vehicleId, vehicleName, driverName, tri
         }
 
         // Slice the route from the closest point to the end
-        // Also prepend the current location to make it smooth
         const remaining = fullRouteCoordinates.slice(closestIndex);
-        setRemainingRouteCoordinates([[currentLocation.lat, currentLocation.lng], ...remaining]);
 
-    }, [currentLocation, fullRouteCoordinates]);
+        // Check if we need to re-calculate (if remaining is empty/short but we are far from destination)
+        const points = tripPoints || internalTripPoints;
+        if (points) {
+            const endLatLng = L.latLng(points.end.lat, points.end.lng);
+            const distToEnd = currentLatLng.distanceTo(endLatLng);
+
+            // If remaining route is empty or very short (< 2 points), but we are still far (> 500m) from destination
+            // It means we probably went off route or the slice logic failed. Re-fetch from current location.
+            if (remaining.length < 2 && distToEnd > 500) {
+                console.log('Recalculating route from current location...');
+                fetchRoute(currentLocation.lat, currentLocation.lng, points.end.lat, points.end.lng);
+            } else {
+                setRemainingRouteCoordinates([[currentLocation.lat, currentLocation.lng], ...remaining]);
+            }
+        } else {
+            setRemainingRouteCoordinates([[currentLocation.lat, currentLocation.lng], ...remaining]);
+        }
+
+    }, [currentLocation, fullRouteCoordinates, tripPoints, internalTripPoints]);
+
+    // ... (rest of the component)
+
+    {/* Route History (Traveled Path) */ }
+    {
+        locationHistory.length > 1 && (
+            <Polyline
+                positions={locationHistory.filter(pt => pt[0] !== 0 && pt[1] !== 0)}
+                color="#7c3aed" // Purple for history (same as remaining)
+                weight={4}
+                opacity={0.5}
+            >
+                <Popup>Travelled Path</Popup>
+            </Polyline>
+        )
+    }
+
+    {/* Remaining Route (Purple Line that shrinks) */ }
+    {
+        remainingRouteCoordinates.length > 1 && (
+            <Polyline
+                positions={remainingRouteCoordinates.filter(pt => pt[0] !== 0 && pt[1] !== 0)}
+                color="#7c3aed" // Purple for remaining
+                weight={6}
+                opacity={0.9}
+            >
+                <Popup>Remaining Route</Popup>
+            </Polyline>
+        )
+    }
 
     // Initialize Socket.io
     useEffect(() => {

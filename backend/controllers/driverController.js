@@ -7,21 +7,38 @@ exports.addDriver = async (req, res) => {
     try {
         const { name, email, licenseNumber, assignedVehicle, status } = req.body;
 
-        // 1. Create User account for driver
+        // 1. Check/Create User account
         let user = await User.findOne({ email });
-        if (user) return res.status(400).json({ message: 'User with this email already exists' });
 
-        // Generate a default password
-        const defaultPassword = 'password123';
-        const hashedPassword = await require('bcryptjs').hash(defaultPassword, 10);
-        user = new User({
-            name,
-            email,
-            password: hashedPassword,
-            role: 'driver',
-            isVerified: true // Auto-verify drivers added by admin/owner
-        });
-        await user.save();
+        if (user) {
+            // User exists: Check if they are already a driver
+            const existingDriver = await Driver.findOne({ userId: user._id });
+            if (existingDriver) {
+                if (existingDriver.ownerId.toString() === req.user.id.toString()) {
+                    return res.status(400).json({ message: 'Driver already added to your fleet' });
+                } else {
+                    return res.status(400).json({ message: 'User is already a driver for another fleet' });
+                }
+            }
+
+            // Update role if needed
+            if (user.role !== 'driver') {
+                user.role = 'driver';
+                await user.save();
+            }
+        } else {
+            // Create new user
+            const defaultPassword = 'password123';
+            const hashedPassword = await require('bcryptjs').hash(defaultPassword, 10);
+            user = new User({
+                name,
+                email,
+                password: hashedPassword,
+                role: 'driver',
+                isVerified: true
+            });
+            await user.save();
+        }
 
         // 2. Create Driver profile
         const driverData = {

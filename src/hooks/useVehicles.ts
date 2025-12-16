@@ -46,7 +46,9 @@ export function useVehicles() {
     trip_purpose: item.purpose || '',
     created_at: item.createdAt,
     fuel_consumed: item.fuelConsumed || 0,
-    goods_carried: ''
+    goods_carried: '',
+    status: item.status,
+    updated_at: item.updatedAt
   });
 
   const mapExpense = (item: any): Expense => ({

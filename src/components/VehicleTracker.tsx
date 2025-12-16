@@ -46,10 +46,11 @@ interface VehicleTrackerProps {
     vehicleId: string;
     vehicleName: string;
     tripPoints?: TripPoints;
+    historyPoints?: { lat: number; lng: number; timestamp: string }[];
     onSaveTrip?: (data: any) => void;
 }
 
-export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onSaveTrip }: VehicleTrackerProps) {
+export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, historyPoints, onSaveTrip }: VehicleTrackerProps) {
     const [currentLocation, setCurrentLocation] = useState<VehicleLocation>({
         lat: tripPoints?.start.lat || 18.5204, // Default to Trip Start or Pune
         lng: tripPoints?.start.lng || 73.8567,
@@ -194,12 +195,15 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
             }
 
             if (vehicle.locationHistory && vehicle.locationHistory.length > 0) {
-                const history = vehicle.locationHistory
-                    .filter((pt: any) => pt.coordinates[1] !== 0 && pt.coordinates[0] !== 0)
-                    .map((pt: any) => [pt.coordinates[1], pt.coordinates[0]] as [number, number]);
+                // If historyPoints prop is provided, we don't need to overwrite it with live history
+                if (!historyPoints) {
+                    const history = vehicle.locationHistory
+                        .filter((pt: any) => pt.coordinates[1] !== 0 && pt.coordinates[0] !== 0)
+                        .map((pt: any) => [pt.coordinates[1], pt.coordinates[0]] as [number, number]);
 
-                if (history.length > 0) {
-                    setLocationHistory(history);
+                    if (history.length > 0) {
+                        setLocationHistory(history);
+                    }
                 }
             }
 
@@ -235,12 +239,25 @@ export default function VehicleTracker({ vehicleId, vehicleName, tripPoints, onS
 
     // Initial fetch and polling
     useEffect(() => {
-        if (vehicleId) {
+        if (vehicleId && !historyPoints) {
             fetchVehicleData();
             const interval = setInterval(fetchVehicleData, 5000);
             return () => clearInterval(interval);
+        } else if (historyPoints && historyPoints.length > 0) {
+            // If viewing history, set the map to the last point
+            const lastPoint = historyPoints[historyPoints.length - 1];
+            setCurrentLocation({
+                lat: lastPoint.lat,
+                lng: lastPoint.lng,
+                speed: 0,
+                timestamp: new Date(lastPoint.timestamp)
+            });
+
+            // Set history path
+            const path = historyPoints.map(pt => [pt.lat, pt.lng] as [number, number]);
+            setLocationHistory(path);
         }
-    }, [vehicleId]);
+    }, [vehicleId, historyPoints]);
 
     const activeTripPoints = tripPoints || internalTripPoints;
 

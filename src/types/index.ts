@@ -43,6 +43,8 @@ export interface Trip {
   goods_carried?: string;
   trip_purpose: string;
   created_at: string;
+  updated_at?: string;
+  status?: 'Ongoing' | 'Completed';
 }
 
 export interface Expense {

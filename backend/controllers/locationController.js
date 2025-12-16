@@ -48,7 +48,7 @@ exports.getLiveLocation = async (req, res) => {
     }
 };
 
-// Get route history
+// Get route history by Trip ID
 exports.getRouteHistory = async (req, res) => {
     try {
         const { tripId } = req.params;
@@ -56,6 +56,51 @@ exports.getRouteHistory = async (req, res) => {
         if (!history) return res.status(404).json({ message: 'History not found' });
         res.json(history);
     } catch (error) {
+        res.status(500).json({ message: 'Server Error', error: error.message });
+    }
+};
+
+// Get route history by Vehicle and Time Range
+exports.getVehicleRouteHistory = async (req, res) => {
+    try {
+        const { vehicleId } = req.params;
+        const { start, end } = req.query;
+
+        const startDate = start ? new Date(start) : new Date(0);
+        const endDate = end ? new Date(end) : new Date();
+
+        // Find all history documents for this vehicle that might contain relevant points
+        // We check if the document was updated after the start time
+        const histories = await RouteHistory.find({
+            vehicleId,
+            updatedAt: { $gte: startDate }
+        }).sort({ createdAt: 1 });
+
+        let allPoints = [];
+
+        histories.forEach(h => {
+            if (h.locations) {
+                const validPoints = h.locations.filter(pt => {
+                    const ptTime = new Date(pt.timestamp);
+                    return ptTime >= startDate && ptTime <= endDate;
+                });
+
+                validPoints.forEach(pt => {
+                    allPoints.push({
+                        lat: pt.lat,
+                        lng: pt.lng,
+                        timestamp: pt.timestamp
+                    });
+                });
+            }
+        });
+
+        // Sort by timestamp
+        allPoints.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        res.json(allPoints);
+    } catch (error) {
+        console.error('Error fetching vehicle history:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };

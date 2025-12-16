@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import VehicleTracker from './VehicleTracker';
 import axios from 'axios';
 import LocationAutocomplete from './LocationAutocomplete';
+import { API_URL } from '../config';
 
 
 export default function TripTracking() {
@@ -34,6 +35,8 @@ export default function TripTracking() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [viewingTripMap, setViewingTripMap] = useState<Trip | null>(null);
+  const [tripHistory, setTripHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filterDate, setFilterDate] = useState('');
   const [filterDriver, setFilterDriver] = useState('');
   const [filterVehicle, setFilterVehicle] = useState('');
@@ -130,6 +133,27 @@ export default function TripTracking() {
     setEditingTrip(null);
   };
 
+  const handleViewMap = async (trip: Trip) => {
+    setViewingTripMap(trip);
+    setTripHistory([]); // Clear previous history
+
+    try {
+      const token = localStorage.getItem('token');
+      // Fetch history for this vehicle within the trip time range
+      // If trip is ongoing, end time is now
+      const endTime = trip.status === 'Completed' ? (trip.updated_at || new Date().toISOString()) : new Date().toISOString();
+
+      const response = await axios.get(
+        `${API_URL}/api/location/history/vehicle/${trip.vehicle_id}?start=${trip.created_at}&end=${endTime}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setTripHistory(response.data);
+    } catch (error) {
+      console.error('Error fetching trip history:', error);
+    }
+  };
+
   const TripCard = ({ trip }: { trip: Trip }) => {
     const vehicle = vehicles.find(v => v.id === trip.vehicle_id);
     const distance = trip.end_mileage - trip.start_mileage;
@@ -160,7 +184,7 @@ export default function TripTracking() {
 
             {/* View Map Button */}
             <button
-              onClick={() => setViewingTripMap(trip)}
+              onClick={() => handleViewMap(trip)}
               className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
               title="View on Map"
             >
@@ -767,6 +791,7 @@ export default function TripTracking() {
                 <VehicleTracker
                   vehicleId={viewingTripMap.vehicle_id}
                   vehicleName={vehicles.find(v => v.id === viewingTripMap.vehicle_id)?.vehicle_number || 'Vehicle'}
+                  historyPoints={tripHistory}
                   tripPoints={{
                     start: {
                       lat: parseFloat(viewingTripMap.start_location_lat),

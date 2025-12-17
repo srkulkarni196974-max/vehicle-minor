@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+
 // API Configuration
 // Automatically detects the correct backend URL based on how the app is accessed
 const getApiUrl = () => {
@@ -6,21 +8,26 @@ const getApiUrl = () => {
         return import.meta.env.VITE_API_URL;
     }
 
+    // 2. If running as a native mobile app (Capacitor), use the production backend
+    if (Capacitor.isNativePlatform()) {
+        return 'https://vehicle-management-backend-ap3f.onrender.com';
+    }
+
     const hostname = window.location.hostname;
 
-    // 2. SAFEGUARD: Explicitly check for deployed frontend domain FIRST
+    // 3. SAFEGUARD: Explicitly check for deployed frontend domain
     // This prevents the "Mixed Content" error if PROD flag fails
     if (hostname.includes('netlify.app') || hostname.includes('pages.dev')) {
         return 'https://vehicle-management-backend-ap3f.onrender.com';
     }
 
-    // 3. In development, check if accessed via network IP (for mobile testing)
+    // 4. In development, check if accessed via network IP (for mobile testing)
     // Only use this if it's an IP address or local hostname, NOT a public domain
     if (hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.includes('netlify.app') && !hostname.includes('pages.dev')) {
         return `http://${hostname}:5000`;
     }
 
-    // 4. Default to localhost for local development (ALWAYS for localhost)
+    // 5. Default to localhost for local development (ALWAYS for localhost)
     return 'http://localhost:5000';
 };
 

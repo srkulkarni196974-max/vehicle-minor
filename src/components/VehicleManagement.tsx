@@ -144,17 +144,19 @@ export default function VehicleManagement() {
           </div>
         </div>
 
-        <div className="flex justify-end space-x-2 mt-4 pt-4 border-t border-gray-100">
-          <button className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-            <Edit2 className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleDelete(vehicle.id)}
-            className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
+        {user?.role !== 'driver' && (
+          <div className="flex justify-end space-x-2 mt-4 pt-4 border-t border-gray-100">
+            <button className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+              <Edit2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleDelete(vehicle.id)}
+              className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -167,13 +169,15 @@ export default function VehicleManagement() {
           <h1 className="text-2xl font-bold text-gray-900">Vehicle Management</h1>
           <p className="text-gray-600 mt-1">Manage your fleet vehicles</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl"
-        >
-          <Plus className="h-5 w-5" />
-          <span>Add Vehicle</span>
-        </button>
+        {user?.role !== 'driver' && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Add Vehicle</span>
+          </button>
+        )}
       </div>
 
       {/* Vehicle Grid */}
@@ -185,7 +189,9 @@ export default function VehicleManagement() {
           <div className="col-span-full text-center py-12">
             <Car className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 text-lg">No vehicles added yet</p>
-            <p className="text-gray-400">Click "Add Vehicle" to get started</p>
+            {user?.role !== 'driver' && (
+              <p className="text-gray-400">Click "Add Vehicle" to get started</p>
+            )}
           </div>
         )}
       </div>

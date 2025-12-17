@@ -10,12 +10,15 @@ import {
   onAuthStateChanged,
   User as FirebaseUser,
   getIdToken,
-  GoogleAuthProvider,
   signInWithPopup,
   sendPasswordResetEmail,
   EmailAuthProvider,
-  linkWithCredential
+  linkWithCredential,
+  GoogleAuthProvider,
+  signInWithCredential
 } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
 // Configure axios defaults
 axios.defaults.baseURL = `${API_URL}/api`;
@@ -168,17 +171,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = async (role: User['role'] = 'personal') => {
     setApiLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
+      let user;
+
+      // Check if running on native mobile (Android/iOS)
+      if (Capacitor.isNativePlatform()) {
+        try {
+          // Native Google Sign-In
+          const googleUser = await GoogleAuth.signIn();
+          const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
+          const userCredential = await signInWithCredential(auth, credential);
+          user = userCredential.user;
+        } catch (error: any) {
+          // Handle native sign-in error specifically or fallback
+          console.error('Native Google Sign-in failed', error);
+          throw error;
+        }
+      } else {
+        // Web Google Sign-In (Popup)
+        const provider = new GoogleAuthProvider();
+        const userCredential = await signInWithPopup(auth, provider);
+        user = userCredential.user;
+      }
 
       // Check if user exists in backend, if not create with provided role
-      const displayName = userCredential.user.displayName || 'User';
-      await syncUserWithBackend(userCredential.user, displayName, role);
+      const displayName = user.displayName || 'User';
+      await syncUserWithBackend(user, displayName, role);
+
     } catch (error: any) {
       console.error('Google Sign-In error:', error);
       let message = 'Google Sign-In failed';
       if (error.code === 'auth/popup-closed-by-user') message = 'Sign-in cancelled';
       if (error.code === 'auth/popup-blocked') message = 'Popup blocked by browser';
+      // Native auth errors usually come as objects, handle them
+      if (error.message) message = error.message;
+
       throw new Error(message);
     } finally {
       setApiLoading(false);
@@ -199,6 +225,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      if (Capacitor.isNativePlatform()) {
+        await GoogleAuth.signOut();
+      }
       await signOut(auth);
     } catch (error) {
       console.error('Logout error:', error);

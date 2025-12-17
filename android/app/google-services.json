@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "310629410442",
+    "project_id": "vehicle-be514",
+    "storage_bucket": "vehicle-be514.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:310629410442:android:0cf71323ee66a6722cef73",
+        "android_client_info": {
+          "package_name": "com.vehicle.tracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "310629410442-bd5johl4iiondhedjb84hggs5t04fh0r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxMqMKgWrSGxKsrgEGbfuIprhV7hut5mY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "310629410442-bd5johl4iiondhedjb84hggs5t04fh0r.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
